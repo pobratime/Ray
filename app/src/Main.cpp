@@ -4,7 +4,7 @@
 #include <Main.hpp>
 
 namespace engine::main::app {
-
+// TODO OVDE STA
 void MainApp::app_setup() {
     const auto main_controller = register_controller<MainController>();
     main_controller->after(core::Controller::get<core::EngineControllersEnd>());

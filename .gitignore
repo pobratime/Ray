@@ -32,3 +32,7 @@ __pycache__/
 *.pyc
 .cache/
 *.log
+
+# FIND-TODOS
+/find-todos/dist-newstyle
+/find-todos/CHANGELOG.md
