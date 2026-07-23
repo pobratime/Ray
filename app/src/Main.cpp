@@ -1,3 +1,4 @@
+#include "CameraHandler.hpp"
 #include "MainController.hpp"
 #include "engine/core/App.hpp"
 #include "engine/core/Controller.hpp"
@@ -6,8 +7,10 @@
 namespace engine::main::app {
 void MainApp::app_setup() {
     const auto main_controller = register_controller<MainController>();
+    const auto camera_controller = register_controller<CameraController>();
     main_controller->after(core::Controller::get<core::EngineControllersEnd>());
     main_controller->set_enable(true);
+    camera_controller->set_enable(true);
 }
 }// namespace engine::main::app
 

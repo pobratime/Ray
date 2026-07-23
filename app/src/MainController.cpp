@@ -1,4 +1,5 @@
 #include "MainController.hpp"
+#include "CameraHandler.hpp"
 #include "engine/platform/Input.hpp"
 #include "engine/platform/PlatformController.hpp"
 
@@ -30,5 +31,4 @@ void MainController::poll_events() {
         m_running = false;
     }
 }
-
 }// namespace engine::main::app
