@@ -4,6 +4,7 @@
 
 namespace engine::main::app {
 void MainController::initialize() {
+    // TODO
 }
 
 bool MainController::loop() {
@@ -11,15 +12,19 @@ bool MainController::loop() {
 }
 
 void MainController::begin_draw() {
+    // TODO
 }
 
 void MainController::draw() {
+    // TODO
 }
 
 void MainController::end_draw() {
+    // TODO
 }
 
 void MainController::update() {
+    // TODO
 }
 
 void MainController::poll_events() {

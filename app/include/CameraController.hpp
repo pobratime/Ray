@@ -5,7 +5,6 @@
 namespace engine::main {
 class CameraController final : public core::Controller {
 public:
-    // TODO
     void get_camera();
 
 private:
