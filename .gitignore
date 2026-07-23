@@ -26,7 +26,6 @@ engine/libs/glfw/src
 .DS_Store
 /.vscode/
 *.o
-*.obj
 *.d
 CMakeUserPresets.json
 __pycache__/
