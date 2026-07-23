@@ -1,8 +1,9 @@
 #pragma once
 
 namespace engine::main {
-class InputHandler final {
+class CameraHandler final {
 public:
 private:
+    void initialize();
 };
 }// namespace engine::main
