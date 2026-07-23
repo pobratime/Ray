@@ -1,11 +1,10 @@
 {
   "resources": {
-    "models": {
-    }
+    "models": {}
   },
   "window": {
     "height": 600,
-    "title": "Hello, window!",
+    "title": "Ray",
     "width": 800
   }
 }
