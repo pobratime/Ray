@@ -5,9 +5,10 @@ import Data.List
 import System.Directory
 import System.FilePath 
 import Data.Char
+import System.IO
 
 sourceExtensions :: [String]
-sourceExtensions = [".cpp", ".hpp"]
+sourceExtensions = [".cpp", ".hpp", ".glsl"]
 
 hasSourceExtension :: FilePath -> Bool
 hasSourceExtension path = any (`isSuffixOf` path) sourceExtensions
@@ -28,7 +29,7 @@ trim = dropWhileEnd isSpace . dropWhile isSpace
 
 findTodosInFile :: FilePath -> IO [Hit]
 findTodosInFile path = do
-  contents <- readFile path
+  contents <- readFile' path
   let 
     numberedLines = zip [1 ..] $ lines contents
     hits = [ Hit path lineNo (trim line) | (lineNo, line) <- numberedLines, "TODO" `isInfixOf` line]
@@ -40,7 +41,7 @@ printHit (Hit file lineNo text) =
 
 main :: IO ()
 main = do
-  let root = "../app"
+  root <- getLine 
   exists <- doesDirectoryExist root 
   if not exists
     then putStrLn $ "Directory not found: " ++ root
