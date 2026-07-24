@@ -1,10 +1,11 @@
 #include "MainController.hpp"
+#include "Scene.hpp"
 #include "engine/platform/Input.hpp"
 #include "engine/platform/PlatformController.hpp"
 
 namespace engine::main::app {
 void MainController::initialize() {
-    // TODO
+    m_scene.initialize();
 }
 
 bool MainController::loop() {

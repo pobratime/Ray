@@ -1,6 +1,11 @@
 {
   "resources": {
-    "models": {}
+    "models": {
+      "utah_teapot": {
+        "path": "utah_teapot.obj",
+        "flip_uvs": false
+      }
+    }
   },
   "window": {
     "height": 600,
