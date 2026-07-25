@@ -10,18 +10,16 @@ void Scene::initialize() {
     const auto resources_controller = engine::core::Controller::get<resources::ResourcesController>();
     m_scene_shader = resources_controller->shader("scene");
     m_utah_teapod_model = resources_controller->model("utah_teapot");
-    m_stanford_bunny_model = resources_controller->model("stanford_bunny");
+    // m_stanford_bunny_model = resources_controller->model("stanford_bunny");
     m_teapod_bvh = std::make_unique<resources::BVHTree>(*m_utah_teapod_model);
-    m_bunny_bvh = std::make_unique<resources::BVHTree>(*m_stanford_bunny_model);
-    pipeline.initialize(*m_scene_shader);
+    // m_bunny_bvh = std::make_unique<resources::BVHTree>(*m_stanford_bunny_model);
+    pipeline.initialize();
+    pipeline.upload(*m_teapod_bvh);
+    // pipeline.upload(*m_bunny_bvh);
 }
 
 void Scene::render() {
-    // TODO
-}
-
-void Scene::setup_screen_quad() {
-    // TODO
+    pipeline.render(*m_scene_shader);
 }
 
 }// namespace engine::main::app

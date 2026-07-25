@@ -1,5 +1,6 @@
 #include "MainController.hpp"
 #include "Scene.hpp"
+#include "engine/graphics/OpenGL.hpp"
 #include "engine/platform/Input.hpp"
 #include "engine/platform/PlatformController.hpp"
 
@@ -13,7 +14,7 @@ bool MainController::loop() {
 }
 
 void MainController::begin_draw() {
-    // TODO
+    graphics::OpenGL::clear_buffers();
 }
 
 void MainController::draw() {
@@ -21,7 +22,7 @@ void MainController::draw() {
 }
 
 void MainController::end_draw() {
-    // TODO
+    get<platform::PlatformController>()->swap_buffers();
 }
 
 void MainController::update() {

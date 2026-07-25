@@ -6,12 +6,13 @@
 namespace engine::graphics {
 class RayTracingPipeline {
 public:
-    void initialize(resources::Shader &shader);
+    void initialize();
     void upload(resources::BVHTree &tree);
-    void render();
+    void render(resources::Shader &shader);
 
 private:
     void setup_screen_quad();
+
     int32_t m_max_texture_buffer_texels = 0;
 
     uint32_t m_node_buffer = 0;

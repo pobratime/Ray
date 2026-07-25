@@ -7,8 +7,8 @@
 #include "spdlog/spdlog.h"
 
 namespace engine::graphics {
-void RayTracingPipeline::initialize(resources::Shader &shader) {
-    // CHECKED_GL_CALL(glGetIntegerv, GL_MAX_TEXTURE_BUFFER_SIZE, &m_max_texture_buffer_texels);
+void RayTracingPipeline::initialize() {
+    CHECKED_GL_CALL(glGetIntegerv, GL_MAX_TEXTURE_BUFFER_SIZE, &m_max_texture_buffer_texels);
     // spdlog::info("GL_MAX_TEXTURE_BUFFER_SIZE = {}", m_max_texture_buffer_texels);
     CHECKED_GL_CALL(glGenBuffers, 1, &m_node_buffer);
     CHECKED_GL_CALL(glGenTextures, 1, &m_node_texture);
@@ -44,14 +44,13 @@ void RayTracingPipeline::upload(resources::BVHTree &tree) {
     CHECKED_GL_CALL(glTexBuffer, GL_TEXTURE_BUFFER, GL_RGBA32F, m_primitive_buffer);
 }
 
-void RayTracingPipeline::render() {
+void RayTracingPipeline::render(resources::Shader &shader) {
+    shader.use();
     // TODO
-    // camera params imgui stuff etc etc
 }
 
 void RayTracingPipeline::setup_screen_quad() {
     static const float quad_vertices[] = {
-            // pos.xy      // uv
             -1.0f,
             1.0f,
             0.0f,
