@@ -15,6 +15,6 @@ private:
     void end_draw() override;
 
     bool m_running = true;
-    Scene m_scene = {};
+    Scene m_scene;
 };
 }// namespace engine::main::app
