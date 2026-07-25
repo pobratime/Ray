@@ -1,4 +1,4 @@
-#include "BVHTree.hpp"
+#include "engine/resources/BVHTree.hpp"
 #include "engine/resources/Mesh.hpp"
 #include "engine/resources/Model.hpp"
 #include "glm/common.hpp"
@@ -8,6 +8,7 @@
 #include <cmath>
 #include <cstdint>
 #include <limits>
+#include <vector>
 
 // TODO istraziti SAH algoritam
 
@@ -88,7 +89,7 @@ uint32_t BVHTree::build_recursive(uint32_t start, uint32_t end) {
     uint32_t left_index = build_recursive(start, mid);
     uint32_t right_index = build_recursive(mid, end);
     m_nodes[node_index].left_child = left_index;
-    // inner node
+    m_nodes[node_index].right_child = right_index;
     m_nodes[node_index].primitive_count = 0;
 
     return node_index;
@@ -104,4 +105,65 @@ void BVHTree::compute_bounds(uint32_t start, uint32_t end,
     }
 }
 
+// data.push_back(0.0f); -> PADDINGS FOR SAFETY
+
+std::vector<float> BVHTree::serialize_nodes() const {
+    std::vector<float> data;
+    data.reserve(m_nodes.size() * 12);
+    for (const Node &node: m_nodes) {
+        data.push_back(node.min_bound.x);
+        data.push_back(node.min_bound.y);
+        data.push_back(node.min_bound.z);
+        data.push_back(0.0f);
+
+        data.push_back(node.max_bound.x);
+        data.push_back(node.max_bound.y);
+        data.push_back(node.max_bound.z);
+        data.push_back(0.0f);
+
+        data.push_back(glm::uintBitsToFloat(node.left_child));
+        data.push_back(glm::uintBitsToFloat(node.right_child));
+        data.push_back(glm::uintBitsToFloat(node.first_primitive));
+        data.push_back(glm::uintBitsToFloat(node.primitive_count));
+    }
+
+    return data;
+}
+
+std::vector<float> BVHTree::serialize_primitives() const {
+    std::vector<float> data;
+    data.reserve(m_primitives.size() * 24);
+    for (const Primitive &prim: m_primitives) {
+        data.push_back(prim.v0.x);
+        data.push_back(prim.v0.y);
+        data.push_back(prim.v0.z);
+        data.push_back(0.0f);
+
+        data.push_back(prim.n0.x);
+        data.push_back(prim.n0.y);
+        data.push_back(prim.n0.z);
+        data.push_back(0.0f);
+
+        data.push_back(prim.v1.x);
+        data.push_back(prim.v1.y);
+        data.push_back(prim.v1.z);
+        data.push_back(0.0f);
+
+        data.push_back(prim.n1.x);
+        data.push_back(prim.n1.y);
+        data.push_back(prim.n1.z);
+        data.push_back(0.0f);
+
+        data.push_back(prim.v2.x);
+        data.push_back(prim.v2.y);
+        data.push_back(prim.v2.z);
+        data.push_back(0.0f);
+
+        data.push_back(prim.n2.x);
+        data.push_back(prim.n2.y);
+        data.push_back(prim.n2.z);
+        data.push_back(0.0f);
+    }
+    return data;
+}
 }// namespace engine::resources

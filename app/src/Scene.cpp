@@ -1,6 +1,6 @@
 #include "Scene.hpp"
-#include "BVHTree.hpp"
 #include "engine/core/Controller.hpp"
+#include "engine/resources/BVHTree.hpp"
 #include "engine/resources/ResourcesController.hpp"
 #include <engine/core/Engine.hpp>
 
@@ -15,6 +15,7 @@ void Scene::initialize() {
 }
 
 void Scene::render() {
+    // TODO
 }
 
 void Scene::setup_screen_quad() {

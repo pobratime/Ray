@@ -1,6 +1,6 @@
 #pragma once
 
-#include "BVHTree.hpp"
+#include "engine/resources/BVHTree.hpp"
 #include "engine/resources/Model.hpp"
 #include "engine/resources/Shader.hpp"
 #include "glm/ext/vector_float3.hpp"
