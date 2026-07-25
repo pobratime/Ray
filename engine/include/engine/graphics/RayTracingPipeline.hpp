@@ -19,5 +19,8 @@ private:
 
     uint32_t m_primitive_buffer = 0;
     uint32_t m_primitive_texture = 0;
+
+    uint32_t m_quad_vao = 0;
+    uint32_t m_quad_vbo = 0;
 };
 }// namespace engine::graphics
