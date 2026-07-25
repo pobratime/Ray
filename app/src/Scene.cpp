@@ -8,9 +8,7 @@ void Scene::initialize() {
     const auto resources_controller = engine::core::Controller::get<resources::ResourcesController>();
     m_scene_shader = resources_controller->shader("scene");
     m_utah_teapod_model = resources_controller->model("utah_teapot");
-}
-
-Scene::~Scene() {
+    m_stanford_bunny_model = resources_controller->model("stanford_bunny");
 }
 
 void Scene::render() {

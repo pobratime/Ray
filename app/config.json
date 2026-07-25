@@ -4,6 +4,10 @@
       "utah_teapot": {
         "path": "utah_teapot.obj",
         "flip_uvs": false
+      },
+      "stanford_bunny": {
+        "path": "stanford_bunny.obj",
+        "flip_uvs": false
       }
     }
   },

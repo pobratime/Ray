@@ -41,6 +41,7 @@ printHit (Hit file lineNo text) =
 
 main :: IO ()
 main = do
+  putStrLn "Enter the relative path:"
   root <- getLine 
   exists <- doesDirectoryExist root 
   if not exists
