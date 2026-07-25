@@ -11,5 +11,6 @@ public:
     void render();
 
 private:
+    int32_t m_max_texture_buffer_texels = 0;
 };
 }// namespace engine::graphics

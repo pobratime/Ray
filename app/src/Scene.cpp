@@ -1,5 +1,6 @@
 #include "Scene.hpp"
 #include "engine/core/Controller.hpp"
+#include "engine/graphics/RayTracingPipeline.hpp"
 #include "engine/resources/BVHTree.hpp"
 #include "engine/resources/ResourcesController.hpp"
 #include <engine/core/Engine.hpp>
@@ -12,6 +13,7 @@ void Scene::initialize() {
     m_stanford_bunny_model = resources_controller->model("stanford_bunny");
     m_teapod_bvh = std::make_unique<resources::BVHTree>(*m_utah_teapod_model);
     m_bunny_bvh = std::make_unique<resources::BVHTree>(*m_stanford_bunny_model);
+    pipeline.initialize(*m_scene_shader);
 }
 
 void Scene::render() {
