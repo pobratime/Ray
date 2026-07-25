@@ -17,7 +17,7 @@ void MainController::begin_draw() {
 }
 
 void MainController::draw() {
-    // TODO
+    m_scene.render();
 }
 
 void MainController::end_draw() {

@@ -14,7 +14,6 @@ Scene::~Scene() {
 }
 
 void Scene::render() {
-    // TODO
 }
 
 void Scene::setup_screen_quad() {
