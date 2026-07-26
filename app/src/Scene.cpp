@@ -19,7 +19,6 @@ void Scene::initialize() {
 }
 
 void Scene::render() {
-    pipeline.render(*m_scene_shader);
 }
 
 }// namespace engine::main::app

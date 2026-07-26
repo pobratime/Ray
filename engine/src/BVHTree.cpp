@@ -71,7 +71,7 @@ uint32_t BVHTree::build_recursive(uint32_t start, uint32_t end) {
     }
 
     glm::vec3 extent = node.max_bound - node.min_bound;
-    // along which axis are we splitting????
+    // along which axis are we splitting ????
     int axis = 0;
     if (extent.y > extent.x) axis = 1;
     if (extent.z > extent[axis]) axis = 2;
@@ -115,18 +115,17 @@ std::vector<float> BVHTree::serialize_nodes() const {
         data.push_back(node.min_bound.y);
         data.push_back(node.min_bound.z);
         data.push_back(0.0f);
-
+        //
         data.push_back(node.max_bound.x);
         data.push_back(node.max_bound.y);
         data.push_back(node.max_bound.z);
         data.push_back(0.0f);
-
+        //
         data.push_back(glm::uintBitsToFloat(node.left_child));
         data.push_back(glm::uintBitsToFloat(node.right_child));
         data.push_back(glm::uintBitsToFloat(node.first_primitive));
         data.push_back(glm::uintBitsToFloat(node.primitive_count));
     }
-
     return data;
 }
 
@@ -138,27 +137,27 @@ std::vector<float> BVHTree::serialize_primitives() const {
         data.push_back(prim.v0.y);
         data.push_back(prim.v0.z);
         data.push_back(0.0f);
-
+        //
         data.push_back(prim.n0.x);
         data.push_back(prim.n0.y);
         data.push_back(prim.n0.z);
         data.push_back(0.0f);
-
+        //
         data.push_back(prim.v1.x);
         data.push_back(prim.v1.y);
         data.push_back(prim.v1.z);
         data.push_back(0.0f);
-
+        //
         data.push_back(prim.n1.x);
         data.push_back(prim.n1.y);
         data.push_back(prim.n1.z);
         data.push_back(0.0f);
-
+        //
         data.push_back(prim.v2.x);
         data.push_back(prim.v2.y);
         data.push_back(prim.v2.z);
         data.push_back(0.0f);
-
+        //
         data.push_back(prim.n2.x);
         data.push_back(prim.n2.y);
         data.push_back(prim.n2.z);

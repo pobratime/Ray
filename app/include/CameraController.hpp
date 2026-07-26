@@ -5,11 +5,9 @@
 namespace engine::main {
 class CameraController final : public core::Controller {
 public:
-    void get_camera();
-
 private:
     void poll_events() override;
     void initialize() override;
-    void update() override;
+    bool m_cursor_locked = true;
 };
 }// namespace engine::main

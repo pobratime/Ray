@@ -1,15 +1,12 @@
 #include "engine/graphics/RayTracingPipeline.hpp"
 #include "engine/graphics/OpenGL.hpp"
 #include "engine/resources/BVHTree.hpp"
-#include "engine/resources/Shader.hpp"
 #include "engine/util/Errors.hpp"
 #include "glad/glad.h"
-#include "spdlog/spdlog.h"
 
 namespace engine::graphics {
 void RayTracingPipeline::initialize() {
     CHECKED_GL_CALL(glGetIntegerv, GL_MAX_TEXTURE_BUFFER_SIZE, &m_max_texture_buffer_texels);
-    // spdlog::info("GL_MAX_TEXTURE_BUFFER_SIZE = {}", m_max_texture_buffer_texels);
     CHECKED_GL_CALL(glGenBuffers, 1, &m_node_buffer);
     CHECKED_GL_CALL(glGenTextures, 1, &m_node_texture);
 
@@ -42,11 +39,6 @@ void RayTracingPipeline::upload(resources::BVHTree &tree) {
     CHECKED_GL_CALL(glBufferData, GL_TEXTURE_BUFFER, primitives.size() * sizeof(float), primitives.data(), GL_STATIC_DRAW);
     CHECKED_GL_CALL(glBindTexture, GL_TEXTURE_BUFFER, m_primitive_texture);
     CHECKED_GL_CALL(glTexBuffer, GL_TEXTURE_BUFFER, GL_RGBA32F, m_primitive_buffer);
-}
-
-void RayTracingPipeline::render(resources::Shader &shader) {
-    shader.use();
-    // TODO
 }
 
 void RayTracingPipeline::setup_screen_quad() {
