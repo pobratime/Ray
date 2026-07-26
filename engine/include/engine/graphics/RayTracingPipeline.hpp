@@ -10,6 +10,8 @@ public:
     // TODO check with professor
     // maybe i can use the tree for more stuff? -> investigate
     void upload(resources::BVHTree &tree);
+    void bind_resources();
+    void draw();
 
 private:
     void setup_screen_quad();

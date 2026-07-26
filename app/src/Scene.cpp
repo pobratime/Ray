@@ -1,5 +1,6 @@
 #include "Scene.hpp"
 #include "engine/core/Controller.hpp"
+#include "engine/graphics/Camera.hpp"
 #include "engine/graphics/RayTracingPipeline.hpp"
 #include "engine/resources/BVHTree.hpp"
 #include "engine/resources/ResourcesController.hpp"
@@ -19,6 +20,17 @@ void Scene::initialize() {
 }
 
 void Scene::render() {
+    m_scene_shader->use();
+    pipeline.bind_resources();
+    m_scene_shader->set_int("u_nodes", 0);
+    m_scene_shader->set_int("u_primitives", 1);
+    const auto camera = engine::core::Controller::get<graphics::Camera>();
+    m_scene_shader->set_vec3("u_camera_pos", camera->Position);
+    m_scene_shader->set_vec3("u_camera_front", camera->Front);
+    m_scene_shader->set_vec3("u_camera_up", camera->Up);
+    m_scene_shader->set_vec3("u_camera_right", camera->Right);
+    // TODO ...
+    pipeline.draw();
 }
 
 }// namespace engine::main::app

@@ -41,6 +41,17 @@ void RayTracingPipeline::upload(resources::BVHTree &tree) {
     CHECKED_GL_CALL(glTexBuffer, GL_TEXTURE_BUFFER, GL_RGBA32F, m_primitive_buffer);
 }
 
+void RayTracingPipeline::bind_resources() {
+    CHECKED_GL_CALL(glActiveTexture, GL_TEXTURE0);
+    CHECKED_GL_CALL(glBindTexture, GL_TEXTURE_BUFFER, m_node_texture);
+
+    CHECKED_GL_CALL(glActiveTexture, GL_TEXTURE1);
+    CHECKED_GL_CALL(glBindTexture, GL_TEXTURE_BUFFER, m_primitive_texture);
+}
+
+void RayTracingPipeline::draw() {
+}
+
 void RayTracingPipeline::setup_screen_quad() {
     static const float quad_vertices[] = {
             -1.0f,

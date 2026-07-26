@@ -18,6 +18,7 @@ void MainController::begin_draw() {
 }
 
 void MainController::draw() {
+    // TODO add another scene maybe
     m_scene.render();
 }
 
