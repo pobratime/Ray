@@ -50,6 +50,9 @@ void RayTracingPipeline::bind_resources() {
 }
 
 void RayTracingPipeline::draw() {
+    glBindVertexArray(m_quad_vao);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+    glBindVertexArray(0);
 }
 
 void RayTracingPipeline::setup_screen_quad() {

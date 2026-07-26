@@ -27,7 +27,7 @@ private:
     glm::vec3 m_teapod_pos = {0.0f, 0.0f, 0.0f};
     glm::vec3 m_bunny_pos = {0.0f, 0.0f, 0.0f};
 
-    graphics::RayTracingPipeline pipeline;
+    graphics::RayTracingPipeline m_pipeline;
     // resources::BVHTree m_teapod_bvh;
     // resources::BVHTree m_bunny_bvh;
 };

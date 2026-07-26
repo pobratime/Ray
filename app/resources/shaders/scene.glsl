@@ -22,6 +22,8 @@ uniform vec3 u_camera_pos;
 uniform vec3 u_camera_front;
 uniform vec3 u_camera_up;
 uniform vec3 u_camera_right;
+uniform float u_fov_tan;
+uniform float u_aspect_ratio;
 
 struct Node{
     vec3 min_bound;
@@ -65,6 +67,74 @@ Primitive fetch_primitive(int index){
     return prim;
 }
 
-void main(){
+struct Ray{
+    vec3 origin;
+    vec3 dir;
+    vec3 dir_inv;
+};
 
+bool triangle_intersection(const in Ray r, const in Primitive prim, out vec3 M, out float hit_t) {
+//    TROUGAO
+    vec3 u = prim.v1 - prim.v0;
+    vec3 w = prim.v2 - prim.v0;
+    vec3 v = prim.v2 - prim.v1;
+
+//    NORMALA RAVNI TROUGLA
+    vec3 N = cross(u, w);
+
+//    DA LI SU PARALELNE?
+    float NdotD = dot(N, r.dir);
+    if (abs(NdotD) < 1e-6) {
+        return false;
+    }
+
+//    DA LI JE PRESEK IZA ZRAKA?
+    hit_t = dot(prim.v0 - r.origin, N) / NdotD;
+    if(hit_t < 0.0001){
+        return false;
+    }
+
+//    PRESECNA TACKA
+    M = r.origin + hit_t * r.dir;
+
+//    DA LI JE U TROUGLU?
+    vec3 p0 = M - prim.v0;
+    vec3 p1 = M - prim.v1;
+    vec3 p2 = M - prim.v2;
+
+//    DA LI JE M SA ISTIH STRANA SVIH IVICA
+    bool b1 = dot(cross(u, p0), N) >= 0.0;
+    bool b2 = dot(cross(v, p1), N) >= 0.0;
+    bool b3 = dot(cross(-w, p2), N) >= 0.0;
+
+//    DA LI SU ZNAKOVI ISTI
+    return (b1 == b2) && (b2 == b3);
+}
+
+bool box_intersection(const in Ray r, const in vec3 bmin, const in vec3 bmax){
+    float tmin = 0.0;
+    float tmax = 1e30;
+
+    for(int d = 0; d < 3; d++){
+        bool sign = r.dir_inv[d] < 0.0;
+        float b0 = sign ? bmax[d] : bmin[d];
+        float b1 = sign ? bmin[d] : bmax[d];
+        tmin = max((b0 - r.origin[d]) * r.dir_inv[d], tmin);
+        tmax = min((b1 - r.origin[d]) * r.dir_inv[d], tmax);
+    }
+
+    return tmin < tmax;
+}
+
+bool trace_ray(in vec2 ndc, out vec3 color){
+    return false;
+}
+
+void main(){
+    vec2 ndc = v_uv * 2.0 - 1.0;
+    if(trace_ray(ndc)){
+//        TODO
+    }else{
+        FragColor = vec4(0.05, 0.05, 0.08, 1.0);
+    }
 }

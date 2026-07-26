@@ -6,6 +6,8 @@ namespace engine::main {
 void CameraController::initialize() {
     const auto graphics_controller = get<graphics::GraphicsController>();
     graphics_controller->camera()->Position = {0.0f, 0.0f, 0.0f};
+    const auto platform_controller = get<platform::PlatformController>();
+    platform_controller->set_enable_cursor(m_cursor_locked);
 }
 
 void CameraController::poll_events() {
@@ -28,7 +30,7 @@ void CameraController::poll_events() {
     if (platform_controller->key(KEY_D).is_down())
         camera->move_camera(graphics::Camera::Movement::RIGHT, dt);
 
-    if (m_cursor_locked) {
+    if (!m_cursor_locked) {
         camera->rotate_camera(platform_controller->mouse().dx,
                               platform_controller->mouse().dy);
         camera->zoom(platform_controller->mouse().scroll);

@@ -8,6 +8,6 @@ public:
 private:
     void poll_events() override;
     void initialize() override;
-    bool m_cursor_locked = true;
+    bool m_cursor_locked = false;
 };
 }// namespace engine::main
