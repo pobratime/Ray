@@ -46,6 +46,11 @@ Mesh::Mesh(const std::vector<Vertex> &vertices, const std::vector<uint32_t> &ind
     m_vao = VAO;
     m_num_indices = indices.size();
     m_textures = std::move(textures);
+
+    // DODATO
+    m_vertices = vertices;
+    m_indices = indices;
+    //
 }
 
 void Mesh::draw(const Shader *shader) {

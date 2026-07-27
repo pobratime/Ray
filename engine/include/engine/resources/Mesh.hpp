@@ -43,6 +43,11 @@ public:
     */
     void destroy();
 
+    // DODATO
+    const std::vector<Vertex> &vertices() const { return m_vertices; }
+    const std::vector<uint32_t> &indices() const { return m_indices; }
+    //
+
 private:
     /**
     * @brief Constructs a Mesh object.
@@ -56,6 +61,11 @@ private:
     uint32_t m_vao{0};
     uint32_t m_num_indices{0};
     std::vector<Texture *> m_textures;
+
+    // DODATO
+    std::vector<Vertex> m_vertices;
+    std::vector<uint32_t> m_indices;
+    //
 };
 }// namespace engine::resources
 
