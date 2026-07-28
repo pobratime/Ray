@@ -1,4 +1,4 @@
-#include "engine/resources/BVHTree.hpp"
+#include "engine/util/BVHTree.hpp"
 #include "engine/resources/Mesh.hpp"
 #include "engine/resources/Model.hpp"
 #include "glm/common.hpp"
@@ -12,11 +12,11 @@
 
 // TODO istraziti SAH algoritam
 
-namespace engine::resources {
-BVHTree::BVHTree(const Model &model) {
-    const std::vector<Mesh> &meshes = model.meshes();
-    for (const Mesh &mesh: meshes) {
-        const std::vector<Vertex> &vertices = mesh.vertices();
+namespace engine::util::ds {
+BVHTree::BVHTree(const engine::resources::Model &model) {
+    const std::vector<engine::resources::Mesh> &meshes = model.meshes();
+    for (const engine::resources::Mesh &mesh: meshes) {
+        const std::vector<engine::resources::Vertex> &vertices = mesh.vertices();
         const std::vector<uint32_t> &indices = mesh.indices();
         for (size_t i = 0; i + 2 < indices.size(); i += 3) {
             uint32_t i0 = indices[i];
@@ -165,4 +165,4 @@ std::vector<float> BVHTree::serialize_primitives() const {
     }
     return data;
 }
-}// namespace engine::resources
+}// namespace engine::util::ds
