@@ -8,6 +8,9 @@
 
 #include <algorithm>
 #include <engine/resources/Mesh.hpp>
+#include <engine/util/BVHTree.hpp>
+#include <memory>
+#include <optional>
 #include <utility>
 
 namespace engine::resources {
@@ -54,11 +57,16 @@ public:
         return m_name;
     }
 
+    // const std::unique_ptr<util::ds::BVHTree> get_tree() const {
+    // return m_bvh;
+    // }
+
 private:
     /**
     * @brief The meshes in the model.
     */
     std::vector<Mesh> m_meshes;
+    // std::vector<Mesh> m_meshes;
     /**
     * @brief The path to the model file from which the model was loaded.
     */
@@ -67,6 +75,9 @@ private:
     * @brief The name of the model by which it can be referenced using the @ref engine::resources::ResourcesController::model function.
     */
     std::string m_name;
+
+    // added
+    std::unique_ptr<util::ds::BVHTree> m_bvh;
 
     Model() = default;
 
@@ -77,11 +88,11 @@ private:
     * @param name The name of the model by which it can be referenced using the @ref engine::resources::ResourcesController::model function.
     */
     Model(std::vector<Mesh> meshes, std::filesystem::path path,
-          std::string name)
+          std::string name, std::unique_ptr<util::ds::BVHTree> bvh)
         : m_meshes(std::move(meshes))
         , m_path(std::move(path))
-        , m_name(std::move(name)) {
-    }
+        , m_name(std::move(name))
+        , m_bvh(std::move(bvh)) {};
 };
 }// namespace engine::resources
 

@@ -15,5 +15,6 @@ void Model::destroy() {
     for (auto &mesh: m_meshes) {
         mesh.destroy();
     }
+    m_bvh.reset();
 }
 }// namespace engine::resources

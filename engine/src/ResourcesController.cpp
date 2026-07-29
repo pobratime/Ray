@@ -1,11 +1,18 @@
+#include "engine/resources/Mesh.hpp"
+#include "engine/resources/Model.hpp"
+#include "engine/util/BVHTree.hpp"
 #include <assimp/Importer.hpp>
+#include <assimp/mesh.h>
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
+#include <cstdint>
 #include <engine/graphics/OpenGL.hpp>
 #include <engine/resources/ResourcesController.hpp>
 #include <engine/resources/ShaderCompiler.hpp>
 #include <engine/util/Configuration.hpp>
 #include <engine/util/Errors.hpp>
+#include <memory>
+#include <optional>
 #include <spdlog/spdlog.h>
 #include <unordered_set>
 #include <utility>
@@ -92,7 +99,7 @@ public:
      * @returns The meshes in the scene.
      */
     std::vector<Mesh> process_meshes();
-
+    std::unique_ptr<util::ds::BVHTree> process_bvh();
     explicit AssimpSceneProcessor(ResourcesController *resources_controller, const aiScene *scene, std::filesystem::path model_path)
         : m_scene(scene)
         , m_model_path(std::move(model_path))
@@ -101,6 +108,9 @@ public:
 
 private:
     void process_node(const aiNode *node);
+
+    void process_node_bvh(const aiNode *node, std::vector<Vertex> &vertices, std::vector<uint32_t> &indices);
+    void process_mesh_bvh(const aiMesh *mesh, std::vector<Vertex> &vertices, std::vector<uint32_t> &indices);
 
     void process_mesh(aiMesh *mesh);
 
@@ -124,6 +134,7 @@ Model *ResourcesController::model(const std::string &name) {
             std::string msg = std::format("No model ({}) specify in config.json. Please add the model to the config.json.", name);
             throw util::EngineError(util::EngineError::Type::ConfigurationError, msg);
         }
+
         std::filesystem::path model_path = m_models_path / std::filesystem::path(config["resources"]["models"][name]["path"].get<std::string>());
         Assimp::Importer importer;
         int flags = aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_CalcTangentSpace;
@@ -137,9 +148,18 @@ Model *ResourcesController::model(const std::string &name) {
             std::string msg = std::format("Assimp error while reading model: {} from path {}.", model_path.string(), name);
             throw util::EngineError(util::EngineError::Type::AssetLoadingError, msg);
         }
+
         AssimpSceneProcessor scene_processor(this, scene, model_path);
-        std::vector<Mesh> meshes = scene_processor.process_meshes();
-        result = std::make_unique<Model>(Model(std::move(meshes), model_path, name));
+        std::vector<Mesh> meshes{};
+        std::unique_ptr<util::ds::BVHTree> bvh = nullptr;
+        if (config["resources"].value<bool>("build_bvh_on_load", false)) {
+            spdlog::info("create_bvh(path={})", model_path.string());
+            bvh = scene_processor.process_bvh();
+        } else {
+            spdlog::info("create_model(path={})", model_path.string());
+            scene_processor.process_meshes();
+        }
+        result = std::make_unique<Model>(Model(std::move(meshes), model_path, name, std::move(bvh)));
     }
     return result.get();
 }
@@ -172,6 +192,65 @@ Shader *ResourcesController::shader(const std::string &name, const std::filesyst
         result = std::make_unique<Shader>(ShaderCompiler::compile_from_file(name, path));
     }
     return result.get();
+}
+
+std::unique_ptr<util::ds::BVHTree> AssimpSceneProcessor::process_bvh() {
+    std::vector<Vertex> all_vertices;
+    std::vector<uint32_t> all_indices;
+
+    process_node_bvh(m_scene->mRootNode, all_vertices, all_indices);
+
+    if (all_indices.empty() || all_vertices.empty()) {
+        return nullptr;
+    }
+    return std::make_unique<util::ds::BVHTree>(all_vertices, all_indices);
+}
+
+void AssimpSceneProcessor::process_node_bvh(const aiNode *node, std::vector<Vertex> &vertices, std::vector<uint32_t> &indices) {
+    for (uint32_t i = 0; i < node->mNumMeshes; ++i) {
+        auto mesh = m_scene->mMeshes[node->mMeshes[i]];
+        process_mesh_bvh(mesh, vertices, indices);
+    }
+    for (uint32_t i = 0; i < node->mNumChildren; ++i) {
+        process_node_bvh(node->mChildren[i], vertices, indices);
+    }
+}
+
+void AssimpSceneProcessor::process_mesh_bvh(const aiMesh *mesh, std::vector<Vertex> &vertices, std::vector<uint32_t> &indices) {
+    uint32_t vertex_offset = static_cast<uint32_t>(vertices.size());
+    for (unsigned int i = 0; i < mesh->mNumVertices; ++i) {
+        Vertex vertex{};
+        vertex.Position.x = mesh->mVertices[i].x;
+        vertex.Position.y = mesh->mVertices[i].y;
+        vertex.Position.z = mesh->mVertices[i].z;
+
+        if (mesh->HasNormals()) {
+            vertex.Normal.x = mesh->mNormals[i].x;
+            vertex.Normal.y = mesh->mNormals[i].y;
+            vertex.Normal.z = mesh->mNormals[i].z;
+        }
+
+        if (mesh->mTextureCoords[0]) {
+            vertex.TexCoords.x = mesh->mTextureCoords[0][i].x;
+            vertex.TexCoords.y = mesh->mTextureCoords[0][i].y;
+
+            vertex.Tangent.x = mesh->mTangents[i].x;
+            vertex.Tangent.y = mesh->mTangents[i].y;
+            vertex.Tangent.z = mesh->mTangents[i].z;
+
+            vertex.Bitangent.x = mesh->mBitangents[i].x;
+            vertex.Bitangent.y = mesh->mBitangents[i].y;
+            vertex.Bitangent.z = mesh->mBitangents[i].z;
+        }
+        vertices.push_back(vertex);
+    }
+
+    for (uint32_t i = 0; i < mesh->mNumFaces; ++i) {
+        aiFace face = mesh->mFaces[i];
+        for (uint32_t j = 0; j < face.mNumIndices; ++j) {
+            indices.push_back(face.mIndices[j] + vertex_offset);
+        }
+    }
 }
 
 std::vector<Mesh> AssimpSceneProcessor::process_meshes() {

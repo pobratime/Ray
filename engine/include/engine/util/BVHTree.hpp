@@ -1,6 +1,7 @@
 #pragma once
 
-#include "engine/resources/Model.hpp"
+#include "engine/resources/Mesh.hpp"
+#include "engine/resources/Texture.hpp"
 #include "glm/ext/vector_float3.hpp"
 #include <cstdint>
 
@@ -8,7 +9,8 @@ namespace engine::util::ds {
 
 class BVHTree {
 public:
-    explicit BVHTree(const engine::resources::Model &model);
+    explicit BVHTree(const std::vector<engine::resources::Vertex> &vertices,
+                     const std::vector<uint32_t> &indices);
     ~BVHTree() = default;
 
     std::vector<float> serialize_nodes() const;

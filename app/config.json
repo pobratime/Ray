@@ -1,5 +1,6 @@
 {
   "resources": {
+    "build_bvh_on_load": true,
     "models": {
       "utah_teapot": {
         "path": "utah_teapot.obj",
