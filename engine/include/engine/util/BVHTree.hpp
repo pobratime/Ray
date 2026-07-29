@@ -1,7 +1,6 @@
 #pragma once
 
 #include "engine/resources/Mesh.hpp"
-#include "engine/resources/Texture.hpp"
 #include "glm/ext/vector_float3.hpp"
 #include <cstdint>
 
@@ -14,6 +13,8 @@ public:
                      const std::vector<uint32_t> &indices);
     ~BVHTree() = default;
 
+    void upload();
+    void bind();
 
 private:
     struct Node {
@@ -21,7 +22,7 @@ private:
         float pad0;
         glm::vec3 max_bound;
         float pad1;
-        // if = 0 then its a leaf, else node
+        // if == 0 then its a leaf, else node
         uint32_t left_child = 0;
         uint32_t right_child = 0;
         uint32_t first_primitive = 0;
@@ -29,23 +30,21 @@ private:
         uint32_t primitive_count = 0;
     };
 
-    struct GPUPrimitive {
-        glm::vec4 v0, v1, v2;
-        glm::vec4 n0, n1, n2;
-        glm::vec4 uv0, uv1, uv2;
-        glm::vec4 t0, t1, t2;
+    struct CPUPrimitive {
+        glm::vec3 v0, v1, v2;
+        glm::vec3 centroid;
     };
 
+    uint32_t m_ssbo = 0;
 
-    void transform_to_gpu(const std::vector<resources::Vertex> &vertices,
+    void transform_to_cpu(const std::vector<resources::Vertex> &vertices,
                           const std::vector<uint32_t> &indices);
 
-    std::vector<GPUPrimitive> m_primitives{};
+    std::vector<CPUPrimitive> m_primitives{};
     std::vector<Node> m_nodes{};
 
     static constexpr uint32_t MAX_LEAF_PRIMITIVES = 4;
 
-    void build();
     uint32_t build_recursive(uint32_t start, uint32_t end);
     void compute_bounds(uint32_t start, uint32_t end, glm::vec3 &min, glm::vec3 &max);
 };

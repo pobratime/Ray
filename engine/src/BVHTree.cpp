@@ -1,11 +1,15 @@
+// clang-format off
+#include <glad/glad.h>
+// clang-format on
 #include "engine/util/BVHTree.hpp"
+#include "engine/graphics/OpenGL.hpp"
 #include "engine/resources/Mesh.hpp"
 #include "glm/common.hpp"
 #include "glm/ext/vector_float3.hpp"
-#include "spdlog/spdlog.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <glad/glad.h>
 #include <limits>
 #include <vector>
 
@@ -14,42 +18,34 @@ BVHTree::BVHTree(const std::vector<engine::resources::Vertex> &vertices,
                  const std::vector<uint32_t> &indices) {
 
     m_primitives.reserve(indices.size() / 3);
-    transform_to_gpu(vertices, indices);
+    transform_to_cpu(vertices, indices);
     m_nodes.reserve(2 * std::pow(2, std::log2(static_cast<uint32_t>(m_primitives.size()))) - 1);
     build_recursive(0, static_cast<uint32_t>(m_primitives.size()));
 }
 
-void BVHTree::transform_to_gpu(const std::vector<resources::Vertex> &vertices,
+void BVHTree::transform_to_cpu(const std::vector<resources::Vertex> &vertices,
                                const std::vector<uint32_t> &indices) {
 
     for (uint32_t i = 0; i < indices.size(); i += 3) {
-
         const auto &v0 = vertices[indices[i]];
         const auto &v1 = vertices[indices[i + 1]];
         const auto &v2 = vertices[indices[i + 2]];
 
-        // OVO JE POTREBNO JER SSBO OCEKUJE LEP LAYOUT
-        GPUPrimitive prim{};
-
-        prim.v0 = glm::vec4(v0.Position, 1.0f);
-        prim.v1 = glm::vec4(v1.Position, 1.0f);
-        prim.v2 = glm::vec4(v2.Position, 1.0f);
-
-        prim.n0 = glm::vec4(v0.Normal, 1.0f);
-        prim.n1 = glm::vec4(v1.Normal, 1.0f);
-        prim.n2 = glm::vec4(v2.Normal, 1.0f);
-
-        prim.uv0 = glm::vec4(v0.TexCoords, 1.0f, 1.0f);
-        prim.uv1 = glm::vec4(v1.TexCoords, 1.0f, 1.0f);
-        prim.uv2 = glm::vec4(v2.TexCoords, 1.0f, 1.0f);
-
-        prim.t0 = glm::vec4(v0.Tangent, 1.0f);
-        prim.t1 = glm::vec4(v1.Tangent, 1.0f);
-        prim.t2 = glm::vec4(v2.Tangent, 1.0f);
+        CPUPrimitive prim{};
+        prim.v0 = v0.Position;
+        prim.v1 = v1.Position;
+        prim.v2 = v2.Position;
+        prim.centroid = (prim.v0 + prim.v1 + prim.v2) / 3.0f;
 
         m_primitives.push_back(prim);
     }
 }
+
+void BVHTree::upload() {
+    CHECKED_GL_CALL(glGenBuffers, 1, &m_ssbo);
+    CHECKED_GL_CALL(glBindBuffer, GL_SHADER_STORAGE_BUFFER, m_ssbo);
+}
+// TODO void BVHTree::bind
 
 uint32_t BVHTree::build_recursive(uint32_t start, uint32_t end) {
 
@@ -79,10 +75,8 @@ uint32_t BVHTree::build_recursive(uint32_t start, uint32_t end) {
             m_primitives.begin() + start,
             m_primitives.begin() + mid,
             m_primitives.begin() + end,
-            [axis](const GPUPrimitive &a, const GPUPrimitive &b) {
-                float centroid_a = (a.v0[axis] + a.v1[axis] + a.v2[axis]) / 3.0f;
-                float centroid_b = (b.v0[axis] + b.v1[axis] + b.v2[axis]) / 3.0f;
-                return centroid_a < centroid_b;
+            [axis](const CPUPrimitive &a, const CPUPrimitive &b) {
+                return a.centroid[axis] < b.centroid[axis];
             });
     uint32_t left = build_recursive(start, mid);
     uint32_t right = build_recursive(mid, end);

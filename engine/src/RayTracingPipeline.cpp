@@ -1,7 +1,6 @@
 #include "engine/graphics/RayTracingPipeline.hpp"
 #include "engine/graphics/OpenGL.hpp"
 #include "engine/resources/Model.hpp"
-#include "glad/glad.h"
 
 namespace engine::graphics {
 void RayTracingPipeline::initialize() {
