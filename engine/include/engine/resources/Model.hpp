@@ -57,9 +57,9 @@ public:
         return m_name;
     }
 
-    // const std::unique_ptr<util::ds::BVHTree> get_tree() const {
-    // return m_bvh;
-    // }
+    const std::unique_ptr<util::ds::BVHTree> &bvh() const {
+        return m_bvh;
+    }
 
 private:
     /**

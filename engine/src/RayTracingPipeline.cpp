@@ -8,6 +8,7 @@ void RayTracingPipeline::initialize() {
 }
 
 void RayTracingPipeline::upload(const resources::Model &model) {
+    model.bvh();
 }
 
 void RayTracingPipeline::bind_resources() {

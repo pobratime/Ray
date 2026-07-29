@@ -12,7 +12,6 @@
 #include <engine/util/Configuration.hpp>
 #include <engine/util/Errors.hpp>
 #include <memory>
-#include <optional>
 #include <spdlog/spdlog.h>
 #include <unordered_set>
 #include <utility>
@@ -152,6 +151,7 @@ Model *ResourcesController::model(const std::string &name) {
         AssimpSceneProcessor scene_processor(this, scene, model_path);
         std::vector<Mesh> meshes{};
         std::unique_ptr<util::ds::BVHTree> bvh = nullptr;
+        auto start = std::chrono::high_resolution_clock::now();
         if (config["resources"].value<bool>("build_bvh_on_load", false)) {
             spdlog::info("create_bvh(path={})", model_path.string());
             bvh = scene_processor.process_bvh();
@@ -159,6 +159,9 @@ Model *ResourcesController::model(const std::string &name) {
             spdlog::info("create_model(path={})", model_path.string());
             scene_processor.process_meshes();
         }
+        auto end = std::chrono::high_resolution_clock::now();
+        auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+        spdlog::info("BVH built in {} ms", duration_ms);
         result = std::make_unique<Model>(Model(std::move(meshes), model_path, name, std::move(bvh)));
     }
     return result.get();
@@ -203,7 +206,7 @@ std::unique_ptr<util::ds::BVHTree> AssimpSceneProcessor::process_bvh() {
     if (all_indices.empty() || all_vertices.empty()) {
         return nullptr;
     }
-    return std::make_unique<util::ds::BVHTree>(all_vertices, all_indices);
+    return std::make_unique<util::ds::BVHTree>(std::move(all_vertices), std::move(all_indices));
 }
 
 void AssimpSceneProcessor::process_node_bvh(const aiNode *node, std::vector<Vertex> &vertices, std::vector<uint32_t> &indices) {
