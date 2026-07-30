@@ -13,10 +13,12 @@ public:
                      const std::vector<uint32_t> &indices);
     ~BVHTree() = default;
 
-    void upload();
-    void bind();
+    void bind(const unsigned int a, const unsigned int b);
 
 private:
+    static constexpr uint32_t MAX_LEAF_PRIMITIVES = 4;
+
+    // ALLIGNED FOR SSBO
     struct Node {
         glm::vec3 min_bound;
         float pad0;
@@ -32,19 +34,36 @@ private:
 
     struct CPUPrimitive {
         glm::vec3 v0, v1, v2;
+        glm::vec3 n0, n1, n2;
+        glm::vec2 uv0, uv1, uv2;
+        glm::vec3 t0, t1, t2;
+        glm::vec3 b0, b1, b2;
         glm::vec3 centroid;
     };
 
-    uint32_t m_ssbo = 0;
+    // ALLIGNED FOR SSBO
+    struct GPUPrimitive {
+        glm::vec4 v0, v1, v2;
+        glm::vec4 n0, n1, n2;
+        glm::vec4 uv0, uv1, uv2;
+        glm::vec4 t0, t1, t2;
+        glm::vec4 b0, b1, b2;
+        glm::vec4 centroid;
+    };
+
+    uint32_t m_ssbo1 = 0;
+    uint32_t m_ssbo2 = 0;
+
+    std::vector<CPUPrimitive> m_primitives{};
+    std::vector<GPUPrimitive> m_gprimitives{};
+    std::vector<Node> m_nodes{};
+
 
     void transform_to_cpu(const std::vector<resources::Vertex> &vertices,
                           const std::vector<uint32_t> &indices);
 
-    std::vector<CPUPrimitive> m_primitives{};
-    std::vector<Node> m_nodes{};
-
-    static constexpr uint32_t MAX_LEAF_PRIMITIVES = 4;
-
+    void upload();
+    void to_gpu();
     uint32_t build_recursive(uint32_t start, uint32_t end);
     void compute_bounds(uint32_t start, uint32_t end, glm::vec3 &min, glm::vec3 &max);
 };

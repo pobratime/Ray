@@ -42,10 +42,26 @@ void BVHTree::transform_to_cpu(const std::vector<resources::Vertex> &vertices,
 }
 
 void BVHTree::upload() {
-    CHECKED_GL_CALL(glGenBuffers, 1, &m_ssbo);
-    CHECKED_GL_CALL(glBindBuffer, GL_SHADER_STORAGE_BUFFER, m_ssbo);
+    CHECKED_GL_CALL(glCreateBuffers, 1, &m_ssbo1);
+    CHECKED_GL_CALL(glNamedBufferStorage,
+                    m_ssbo1,
+                    m_gprimitives.size() * sizeof(GPUPrimitive),
+                    m_gprimitives.data(),
+                    GL_DYNAMIC_STORAGE_BIT);
+
+    CHECKED_GL_CALL(glCreateBuffers, 1, &m_ssbo2);
+    CHECKED_GL_CALL(glNamedBufferStorage,
+                    m_ssbo2,
+                    m_nodes.size() * sizeof(Node),
+                    m_nodes.data(),
+                    GL_DYNAMIC_STORAGE_BIT);
 }
-// TODO void BVHTree::bind
+
+
+void BVHTree::bind(const unsigned int a, const unsigned int b) {
+    CHECKED_GL_CALL(glBindBufferBase, GL_SHADER_STORAGE_BUFFER, a, m_ssbo1);
+    CHECKED_GL_CALL(glBindBufferBase, GL_SHADER_STORAGE_BUFFER, b, m_ssbo2);
+}
 
 uint32_t BVHTree::build_recursive(uint32_t start, uint32_t end) {
 
