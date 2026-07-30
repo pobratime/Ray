@@ -8,9 +8,9 @@ public:
     void initialize();
     void bind_resources(const std::vector<resources::Model *> &models);
 
-    void draw(const resources::Model &model);
-
 private:
     void setup_screen_quad();
+    uint32_t m_quad_vao = 0;
+    uint32_t m_quad_vbo = 0;
 };
 }// namespace engine::graphics

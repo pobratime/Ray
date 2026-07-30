@@ -6,11 +6,9 @@
 #ifndef MATF_RG_PROJECT_MODEL_HPP
 #define MATF_RG_PROJECT_MODEL_HPP
 
-#include <algorithm>
 #include <engine/resources/Mesh.hpp>
 #include <engine/util/BVHTree.hpp>
 #include <memory>
-#include <optional>
 #include <utility>
 
 namespace engine::resources {

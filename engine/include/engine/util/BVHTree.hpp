@@ -48,11 +48,10 @@ private:
         glm::vec4 uv0, uv1, uv2;
         glm::vec4 t0, t1, t2;
         glm::vec4 b0, b1, b2;
-        glm::vec4 centroid;
     };
 
-    uint32_t m_ssbo1 = 0;
-    uint32_t m_ssbo2 = 0;
+    unsigned int m_ssbo1 = 0;
+    unsigned int m_ssbo2 = 0;
 
     std::vector<CPUPrimitive> m_primitives{};
     std::vector<GPUPrimitive> m_gprimitives{};

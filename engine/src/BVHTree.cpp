@@ -21,6 +21,8 @@ BVHTree::BVHTree(const std::vector<engine::resources::Vertex> &vertices,
     transform_to_cpu(vertices, indices);
     m_nodes.reserve(2 * std::pow(2, std::log2(static_cast<uint32_t>(m_primitives.size()))) - 1);
     build_recursive(0, static_cast<uint32_t>(m_primitives.size()));
+    to_gpu();
+    upload();
 }
 
 void BVHTree::transform_to_cpu(const std::vector<resources::Vertex> &vertices,
@@ -41,6 +43,33 @@ void BVHTree::transform_to_cpu(const std::vector<resources::Vertex> &vertices,
     }
 }
 
+void BVHTree::to_gpu() {
+    for (size_t i = 0; i < m_primitives.size(); i++) {
+        CPUPrimitive prim = m_primitives[i];
+        GPUPrimitive gpu{};
+        gpu.v0 = glm::vec4(prim.v0, 1.0f);
+        gpu.v1 = glm::vec4(prim.v1, 1.0f);
+        gpu.v2 = glm::vec4(prim.v2, 1.0f);
+
+        gpu.n0 = glm::vec4(prim.n0, 0.0f);
+        gpu.n1 = glm::vec4(prim.n1, 0.0f);
+        gpu.n2 = glm::vec4(prim.n2, 0.0f);
+
+        gpu.uv0 = glm::vec4(prim.uv0, 0.0f, 0.0f);
+        gpu.uv1 = glm::vec4(prim.uv1, 0.0f, 0.0f);
+        gpu.uv2 = glm::vec4(prim.uv2, 0.0f, 0.0f);
+
+        gpu.t0 = glm::vec4(prim.t0, 0.0f);
+        gpu.t1 = glm::vec4(prim.t1, 0.0f);
+        gpu.t2 = glm::vec4(prim.t2, 0.0f);
+
+        gpu.b0 = glm::vec4(prim.b0, 0.0f);
+        gpu.b1 = glm::vec4(prim.b1, 0.0f);
+        gpu.b2 = glm::vec4(prim.b2, 0.0f);
+        m_gprimitives.push_back(gpu);
+    }
+}
+
 void BVHTree::upload() {
     CHECKED_GL_CALL(glCreateBuffers, 1, &m_ssbo1);
     CHECKED_GL_CALL(glNamedBufferStorage,
@@ -58,8 +87,8 @@ void BVHTree::upload() {
 }
 
 void BVHTree::bind(const unsigned int a, const unsigned int b) {
-    CHECKED_GL_CALL(glBindBufferBase, GL_SHADER_STORAGE_BUFFER, a, m_ssbo1);
-    CHECKED_GL_CALL(glBindBufferBase, GL_SHADER_STORAGE_BUFFER, b, m_ssbo2);
+    CHECKED_GL_CALL(glBindBufferBase, GL_SHADER_STORAGE_BUFFER, a, m_ssbo2);
+    CHECKED_GL_CALL(glBindBufferBase, GL_SHADER_STORAGE_BUFFER, b, m_ssbo1);
 }
 
 uint32_t BVHTree::build_recursive(uint32_t start, uint32_t end) {
