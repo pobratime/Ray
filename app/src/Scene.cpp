@@ -1,6 +1,5 @@
 #include "Scene.hpp"
 #include "engine/core/Controller.hpp"
-#include "engine/graphics/GraphicsController.hpp"
 #include "engine/resources/ResourcesController.hpp"
 #include <vector>
 

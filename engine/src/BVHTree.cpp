@@ -133,7 +133,8 @@ uint32_t BVHTree::build_recursive(uint32_t start, uint32_t end) {
 
 void BVHTree::compute_bounds(uint32_t start, uint32_t end, glm::vec3 &min, glm::vec3 &max) {
     min = glm::vec3(std::numeric_limits<float>::max());
-    max = glm::vec3(-std::numeric_limits<float>::max());
+    // TODO ask Marko about this weird cases
+    max = glm::vec3(-1);
 
     for (uint32_t i = start; i < end; i++) {
         const auto &p = m_primitives[i];
