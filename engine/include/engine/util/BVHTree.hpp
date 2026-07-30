@@ -3,6 +3,7 @@
 #include "engine/resources/Mesh.hpp"
 #include "glm/ext/vector_float3.hpp"
 #include <cstdint>
+#include <vector>
 
 namespace engine::util::ds {
 
@@ -17,6 +18,11 @@ public:
 
 private:
     static constexpr uint32_t MAX_LEAF_PRIMITIVES = 4;
+
+    struct Bounds {
+        glm::vec3 min;
+        glm::vec3 max;
+    };
 
     // ALLIGNED FOR SSBO
     struct Node {
@@ -53,17 +59,17 @@ private:
     unsigned int m_primitive_ssbo = 0;
     unsigned int m_node_ssbo = 0;
 
-    std::vector<CPUPrimitive> m_primitives{};
-    std::vector<GPUPrimitive> m_gprimitives{};
-    std::vector<Node> m_nodes{};
+    std::vector<Node> build(std::vector<CPUPrimitive> &primitives);
+    uint32_t build_recursive(std::vector<CPUPrimitive> &primitives,
+                             std::vector<Node> &nodes,
+                             uint32_t start, uint32_t end);
+    Bounds compute_bounds(const uint32_t start, const uint32_t end,
+                          const std::vector<CPUPrimitive> &primitives);
 
+    std::vector<CPUPrimitive> transform_to_cpu(const std::vector<resources::Vertex> &vertices,
+                                               const std::vector<uint32_t> &indices);
+    std::vector<GPUPrimitive> transform_to_gpu(std::vector<CPUPrimitive> &primitives);
 
-    void transform_to_cpu(const std::vector<resources::Vertex> &vertices,
-                          const std::vector<uint32_t> &indices);
-
-    void upload();
-    void to_gpu();
-    uint32_t build_recursive(uint32_t start, uint32_t end);
-    void compute_bounds(uint32_t start, uint32_t end, glm::vec3 &min, glm::vec3 &max);
+    void upload_to_gpu(std::vector<GPUPrimitive> &g_primitives, std::vector<Node> &nodes);
 };
 }// namespace engine::util::ds
