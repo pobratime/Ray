@@ -11,6 +11,10 @@ void Model::draw(const Shader *shader) {
     }
 }
 
+void Model::bind(const unsigned int a, const unsigned int b) {
+    m_bvh->bind(a, b);
+}
+
 void Model::destroy() {
     for (auto &mesh: m_meshes) {
         mesh.destroy();

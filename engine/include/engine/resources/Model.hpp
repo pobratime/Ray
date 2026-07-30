@@ -28,6 +28,8 @@ public:
     */
     void draw(const Shader *shader);
 
+    void bind(const unsigned int a, const unsigned int b);
+
     /**
     * @brief Destroys the model in the OpenGL context.
     */
@@ -55,10 +57,6 @@ public:
     */
     const std::string &name() const {
         return m_name;
-    }
-
-    const std::unique_ptr<util::ds::BVHTree> &bvh() const {
-        return m_bvh;
     }
 
 private:

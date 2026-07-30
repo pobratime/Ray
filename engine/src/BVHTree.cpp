@@ -57,7 +57,6 @@ void BVHTree::upload() {
                     GL_DYNAMIC_STORAGE_BIT);
 }
 
-
 void BVHTree::bind(const unsigned int a, const unsigned int b) {
     CHECKED_GL_CALL(glBindBufferBase, GL_SHADER_STORAGE_BUFFER, a, m_ssbo1);
     CHECKED_GL_CALL(glBindBufferBase, GL_SHADER_STORAGE_BUFFER, b, m_ssbo2);
