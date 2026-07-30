@@ -7,8 +7,6 @@
 #define MATF_RG_PROJECT_MODEL_HPP
 
 #include <engine/resources/Mesh.hpp>
-#include <engine/util/BVHTree.hpp>
-#include <memory>
 #include <utility>
 
 namespace engine::resources {
@@ -25,8 +23,6 @@ public:
     * @param shader The shader to use for drawing.
     */
     void draw(const Shader *shader);
-
-    void bind(const unsigned int primitive_slot, const unsigned int node_slot);
 
     /**
     * @brief Destroys the model in the OpenGL context.
@@ -75,7 +71,6 @@ private:
     /**
     * @brief The BVH Tree of a model. 
     */
-    std::unique_ptr<util::ds::BVHTree> m_bvh;
 
     Model() = default;
 
@@ -87,11 +82,10 @@ private:
     * @param bvh The BVH Tree structure of the model.
     */
     Model(std::vector<Mesh> meshes, std::filesystem::path path,
-          std::string name, std::unique_ptr<util::ds::BVHTree> bvh)
+          std::string name)
         : m_meshes(std::move(meshes))
         , m_path(std::move(path))
-        , m_name(std::move(name))
-        , m_bvh(std::move(bvh)) {};
+        , m_name(std::move(name)) {}
 };
 }// namespace engine::resources
 

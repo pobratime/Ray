@@ -6,6 +6,7 @@
 #ifndef MATF_RG_PROJECT_RESOURCES_CONTROLLER_HPP
 #define MATF_RG_PROJECT_RESOURCES_CONTROLLER_HPP
 
+#include "engine/resources/RayTracingModel.hpp"
 #include <engine/core/Controller.hpp>
 #include <engine/resources/Model.hpp>
 #include <engine/resources/Shader.hpp>
@@ -23,6 +24,8 @@ public:
     std::string_view name() const override {
         return "ResourcesController";
     }
+
+    RayTracingModel *rtmodel(const std::string &name);
 
     /**
     * @brief Retrieves the model with a given name. You are not supposed to call `delete` on this pointer.

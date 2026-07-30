@@ -13,6 +13,7 @@ public:
     explicit BVHTree(const std::vector<engine::resources::Vertex> &vertices,
                      const std::vector<uint32_t> &indices);
     ~BVHTree() = default;
+    BVHTree() = default;
 
     void bind(const unsigned int primitive_slot, const unsigned int node_slot);
 
