@@ -26,7 +26,7 @@ public:
     */
     void draw(const Shader *shader);
 
-    void bind(const unsigned int a, const unsigned int b);
+    void bind(const unsigned int primitive_slot, const unsigned int node_slot);
 
     /**
     * @brief Destroys the model in the OpenGL context.
@@ -62,7 +62,7 @@ private:
     * @brief The meshes in the model.
     */
     std::vector<Mesh> m_meshes;
-    // std::vector<Mesh> m_meshes;
+
     /**
     * @brief The path to the model file from which the model was loaded.
     */
@@ -72,7 +72,9 @@ private:
     */
     std::string m_name;
 
-    // added
+    /**
+    * @brief The BVH Tree of a model. 
+    */
     std::unique_ptr<util::ds::BVHTree> m_bvh;
 
     Model() = default;
@@ -82,6 +84,7 @@ private:
     * @param meshes The meshes in the model.
     * @param path The path to the model file from which the model was loaded.
     * @param name The name of the model by which it can be referenced using the @ref engine::resources::ResourcesController::model function.
+    * @param bvh The BVH Tree structure of the model.
     */
     Model(std::vector<Mesh> meshes, std::filesystem::path path,
           std::string name, std::unique_ptr<util::ds::BVHTree> bvh)

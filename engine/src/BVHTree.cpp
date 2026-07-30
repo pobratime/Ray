@@ -71,24 +71,24 @@ void BVHTree::to_gpu() {
 }
 
 void BVHTree::upload() {
-    CHECKED_GL_CALL(glCreateBuffers, 1, &m_ssbo1);
+    CHECKED_GL_CALL(glCreateBuffers, 1, &m_primitive_ssbo);
     CHECKED_GL_CALL(glNamedBufferStorage,
-                    m_ssbo1,
+                    m_primitive_ssbo,
                     m_gprimitives.size() * sizeof(GPUPrimitive),
                     m_gprimitives.data(),
                     GL_DYNAMIC_STORAGE_BIT);
 
-    CHECKED_GL_CALL(glCreateBuffers, 1, &m_ssbo2);
+    CHECKED_GL_CALL(glCreateBuffers, 1, &m_node_ssbo);
     CHECKED_GL_CALL(glNamedBufferStorage,
-                    m_ssbo2,
+                    m_node_ssbo,
                     m_nodes.size() * sizeof(Node),
                     m_nodes.data(),
                     GL_DYNAMIC_STORAGE_BIT);
 }
 
-void BVHTree::bind(const unsigned int a, const unsigned int b) {
-    CHECKED_GL_CALL(glBindBufferBase, GL_SHADER_STORAGE_BUFFER, a, m_ssbo2);
-    CHECKED_GL_CALL(glBindBufferBase, GL_SHADER_STORAGE_BUFFER, b, m_ssbo1);
+void BVHTree::bind(const unsigned int primitive_slot, const unsigned int node_slot) {
+    CHECKED_GL_CALL(glBindBufferBase, GL_SHADER_STORAGE_BUFFER, node_slot, m_primitive_ssbo);
+    CHECKED_GL_CALL(glBindBufferBase, GL_SHADER_STORAGE_BUFFER, primitive_slot, m_node_ssbo);
 }
 
 uint32_t BVHTree::build_recursive(uint32_t start, uint32_t end) {

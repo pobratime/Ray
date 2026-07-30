@@ -11,8 +11,8 @@ void Model::draw(const Shader *shader) {
     }
 }
 
-void Model::bind(const unsigned int a, const unsigned int b) {
-    m_bvh->bind(a, b);
+void Model::bind(const unsigned int primitive_slot, const unsigned int node_slot) {
+    m_bvh->bind(primitive_slot, node_slot);
 }
 
 void Model::destroy() {

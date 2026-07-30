@@ -13,7 +13,7 @@ public:
                      const std::vector<uint32_t> &indices);
     ~BVHTree() = default;
 
-    void bind(const unsigned int a, const unsigned int b);
+    void bind(const unsigned int primitive_slot, const unsigned int node_slot);
 
 private:
     static constexpr uint32_t MAX_LEAF_PRIMITIVES = 4;
@@ -50,8 +50,8 @@ private:
         glm::vec4 b0, b1, b2;
     };
 
-    unsigned int m_ssbo1 = 0;
-    unsigned int m_ssbo2 = 0;
+    unsigned int m_primitive_ssbo = 0;
+    unsigned int m_node_ssbo = 0;
 
     std::vector<CPUPrimitive> m_primitives{};
     std::vector<GPUPrimitive> m_gprimitives{};
