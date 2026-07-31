@@ -19,6 +19,7 @@ BVHTree::BVHTree(const std::vector<engine::resources::Vertex> &vertices,
     std::vector<CPUPrimitive> primitives = transform_to_cpu(vertices, indices);
     std::vector<Node> nodes = build(primitives);
     std::vector<GPUPrimitive> g_primitives = transform_to_gpu(primitives);
+    // THIS HAS TO BE MOVED SINCE OPENGL FUNCTIONS CAN ONLY BE CALLED FROM MAIN THREAD
     upload_to_gpu(g_primitives, nodes);
 }
 
