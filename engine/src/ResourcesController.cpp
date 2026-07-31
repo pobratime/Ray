@@ -21,7 +21,9 @@ namespace engine::resources {
 void ResourcesController::initialize() {
     load_shaders();
     load_models();
+    load_raw_geometry();
     build_bvhs();
+    // create_rtmodels();
     load_textures();
     load_skyboxes();
 }
@@ -73,7 +75,7 @@ void ResourcesController::load_models() {
     }
 }
 
-void ResourcesController::build_bvhs() {
+void ResourcesController::load_raw_geometry() {
     if (!exists(m_models_path)) {
         spdlog::info("[ResourcesController]: no {} found to load the models from", m_models_path.string());
         return;
@@ -87,8 +89,13 @@ void ResourcesController::build_bvhs() {
         spdlog::info("No raw geometry will be loaded for model, build_bvh_on_load is set to false");
         return;
     }
+    for (const auto &model_entry: config["resources"]["models"].items()) {
+        rwg(model_entry.key());
+    }
+};
 
-    // TODO collect all raw geometry and use thread pool to create
+void ResourcesController::build_bvhs() {
+    // THREAD POOL
 }
 
 void ResourcesController::load_textures() {
@@ -151,6 +158,33 @@ private:
 };
 
 RawGeometry *ResourcesController::rwg(const std::string &name) {
+    auto &result = m_rawgs[name];
+    if (!result) {
+        auto &config = util::Configuration::config();
+        if (!config["resources"]["models"].contains(name)) {
+            std::string msg = std::format("No model ({}) specify in config.json. Please add the model to the config.json.", name);
+            throw util::EngineError(util::EngineError::Type::ConfigurationError, msg);
+        }
+
+        std::filesystem::path model_path = m_models_path / std::filesystem::path(config["resources"]["models"][name]["path"].get<std::string>());
+        Assimp::Importer importer;
+        int flags = aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_CalcTangentSpace;
+        if (config["resources"]["models"][name].value<bool>("flip_uvs", false)) {
+            flags |= aiProcess_FlipUVs;
+        }
+
+        spdlog::info("load_model(name={}, path={})", name, model_path.string());
+        const aiScene *scene = importer.ReadFile(model_path, flags);
+        if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
+            std::string msg = std::format("Assimp error while reading model: {} from path {}.", model_path.string(), name);
+            throw util::EngineError(util::EngineError::Type::AssetLoadingError, msg);
+        }
+        AssimpSceneProcessor scene_processor(this, scene, model_path);
+        RawGeometry rw = scene_processor.process_raw_geometry();
+        // preuzimanje
+        result = std::make_unique<RawGeometry>(std::move(rw));
+    }
+    return result.get();
 }
 
 Model *ResourcesController::model(const std::string &name) {
@@ -177,8 +211,6 @@ Model *ResourcesController::model(const std::string &name) {
         }
 
         AssimpSceneProcessor scene_processor(this, scene, model_path);
-        std::vector<Vertex> vertices{};
-        std::vector<uint32_t> indicies{};
         std::vector<Mesh> meshes = scene_processor.process_meshes();
         result = std::make_unique<Model>(Model(std::move(meshes), model_path, name));
     }
