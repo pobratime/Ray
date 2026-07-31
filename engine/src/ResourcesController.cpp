@@ -1,5 +1,6 @@
 #include "engine/resources/Mesh.hpp"
 #include "engine/resources/Model.hpp"
+#include "engine/resources/RayTracingModel.hpp"
 #include <assimp/Importer.hpp>
 #include <assimp/mesh.h>
 #include <assimp/postprocess.h>
@@ -20,7 +21,7 @@ namespace engine::resources {
 void ResourcesController::initialize() {
     load_shaders();
     load_models();
-    // build_bvhs();
+    build_bvhs();
     load_textures();
     load_skyboxes();
 }
@@ -39,7 +40,6 @@ void ResourcesController::terminate() {
         resource->destroy();
     }
 }
-
 
 void ResourcesController::load_shaders() {
     if (!exists(m_shaders_path)) {
@@ -73,6 +73,24 @@ void ResourcesController::load_models() {
     }
 }
 
+void ResourcesController::build_bvhs() {
+    if (!exists(m_models_path)) {
+        spdlog::info("[ResourcesController]: no {} found to load the models from", m_models_path.string());
+        return;
+    }
+    const auto &config = util::Configuration::config();
+    if (!config.contains("resources") || !config["resources"].contains("models")) {
+        std::string msg = "No configuration for models in the config.json, please provide the resources config. See the example in the README.md";
+        throw util::EngineError(util::EngineError::Type::ConfigurationError, msg);
+    }
+    if (!config["resources"].value<bool>("build_bvh_on_load", false)) {
+        spdlog::info("No raw geometry will be loaded for model, build_bvh_on_load is set to false");
+        return;
+    }
+
+    // TODO collect all raw geometry and use thread pool to create
+}
+
 void ResourcesController::load_textures() {
     if (!exists(m_textures_path)) {
         spdlog::info("[ResourcesController]: no {} found to load the textures from", m_textures_path.string());
@@ -104,6 +122,7 @@ public:
      * @returns The meshes in the scene.
      */
     std::vector<Mesh> process_meshes();
+    RawGeometry process_raw_geometry();
 
     explicit AssimpSceneProcessor(ResourcesController *resources_controller, const aiScene *scene, std::filesystem::path model_path)
         : m_scene(scene)
@@ -112,14 +131,11 @@ public:
     }
 
 private:
-    struct RawGeometry {
-        std::vector<Vertex> vertices;
-        std::vector<uint32_t> indices;
-    };
-
     void process_node(const aiNode *node);
-
     void process_mesh(aiMesh *mesh);
+
+    void process_node_raw(const aiNode *node, std::vector<Vertex> &vertices, std::vector<uint32_t> &indices);
+    void process_mesh_raw(aiMesh *mesh, std::vector<Vertex> &vertices, std::vector<uint32_t> &indices);
 
     std::vector<Texture *> process_materials(const aiMaterial *material);
 
@@ -128,10 +144,14 @@ private:
     static TextureType assimp_texture_type_to_engine(aiTextureType type);
 
     std::vector<Mesh> m_meshes;
+    std::vector<RawGeometry> m_rwg;
     const aiScene *m_scene;
     std::filesystem::path m_model_path;
     ResourcesController *m_resources_controller;
 };
+
+RawGeometry *ResourcesController::rwg(const std::string &name) {
+}
 
 Model *ResourcesController::model(const std::string &name) {
     auto &result = m_models[name];
@@ -157,6 +177,8 @@ Model *ResourcesController::model(const std::string &name) {
         }
 
         AssimpSceneProcessor scene_processor(this, scene, model_path);
+        std::vector<Vertex> vertices{};
+        std::vector<uint32_t> indicies{};
         std::vector<Mesh> meshes = scene_processor.process_meshes();
         result = std::make_unique<Model>(Model(std::move(meshes), model_path, name));
     }
@@ -193,11 +215,66 @@ Shader *ResourcesController::shader(const std::string &name, const std::filesyst
     return result.get();
 }
 
+RawGeometry AssimpSceneProcessor::process_raw_geometry() {
+    std::vector<Vertex> vertices;
+    std::vector<uint32_t> indices;
+    process_node_raw(m_scene->mRootNode, vertices, indices);
+    return RawGeometry(std::move(vertices), std::move(indices));
+}
+
+void AssimpSceneProcessor::process_node_raw(const aiNode *node, std::vector<Vertex> &vertices, std::vector<uint32_t> &indices) {
+    for (uint32_t i = 0; i < node->mNumMeshes; ++i) {
+        auto mesh = m_scene->mMeshes[node->mMeshes[i]];
+        process_mesh_raw(mesh, vertices, indices);
+    }
+    for (uint32_t i = 0; i < node->mNumChildren; ++i) {
+        process_node_raw(node->mChildren[i], vertices, indices);
+    }
+}
+
+void AssimpSceneProcessor::process_mesh_raw(aiMesh *mesh, std::vector<Vertex> &vertices, std::vector<uint32_t> &indices) {
+    for (unsigned int i = 0; i < mesh->mNumVertices; ++i) {
+        Vertex vertex{};
+        vertex.Position.x = mesh->mVertices[i].x;
+        vertex.Position.y = mesh->mVertices[i].y;
+        vertex.Position.z = mesh->mVertices[i].z;
+
+        if (mesh->HasNormals()) {
+            vertex.Normal.x = mesh->mNormals[i].x;
+            vertex.Normal.y = mesh->mNormals[i].y;
+            vertex.Normal.z = mesh->mNormals[i].z;
+        }
+
+        if (mesh->mTextureCoords[0]) {
+            vertex.TexCoords.x = mesh->mTextureCoords[0][i].x;
+            vertex.TexCoords.y = mesh->mTextureCoords[0][i].y;
+
+            vertex.Tangent.x = mesh->mTangents[i].x;
+            vertex.Tangent.y = mesh->mTangents[i].y;
+            vertex.Tangent.z = mesh->mTangents[i].z;
+
+            vertex.Bitangent.x = mesh->mBitangents[i].x;
+            vertex.Bitangent.y = mesh->mBitangents[i].y;
+            vertex.Bitangent.z = mesh->mBitangents[i].z;
+        }
+        vertices.push_back(vertex);
+    }
+
+    for (uint32_t i = 0; i < mesh->mNumFaces; ++i) {
+        aiFace face = mesh->mFaces[i];
+
+        for (uint32_t j = 0; j < face.mNumIndices; ++j) {
+            indices.push_back(face.mIndices[j]);
+        }
+    }
+}
+
 std::vector<Mesh> AssimpSceneProcessor::process_meshes() {
     m_meshes.clear();
     process_node(m_scene->mRootNode);
     return std::move(m_meshes);
 }
+
 
 void AssimpSceneProcessor::process_node(const aiNode *node) {
     for (uint32_t i = 0; i < node->mNumMeshes; ++i) {

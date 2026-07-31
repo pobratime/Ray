@@ -25,7 +25,7 @@ public:
         return "ResourcesController";
     }
 
-    RayTracingModel *rtmodel(const std::string &name);
+    RawGeometry *rwg(const std::string &name);
 
     /**
     * @brief Retrieves the model with a given name. You are not supposed to call `delete` on this pointer.
@@ -102,6 +102,9 @@ private:
     * @brief Loads and compile all the shaders from the "resources/shaders" directory. Called during @ref ResourcesController::initialize.
     */
     void load_shaders();
+
+
+    void build_bvhs();
 
     /**
     * @brief A hashmap of all the loaded @ref Model.

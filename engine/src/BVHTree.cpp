@@ -36,6 +36,23 @@ std::vector<BVHTree::CPUPrimitive> BVHTree::transform_to_cpu(const std::vector<r
         prim.v0 = v0.Position;
         prim.v1 = v1.Position;
         prim.v2 = v2.Position;
+
+        prim.n0 = v0.Normal;
+        prim.n1 = v1.Normal;
+        prim.n2 = v2.Normal;
+
+        prim.uv0 = v0.TexCoords;
+        prim.uv1 = v1.TexCoords;
+        prim.uv2 = v2.TexCoords;
+
+        prim.t0 = v0.Tangent;
+        prim.t1 = v1.Tangent;
+        prim.t2 = v2.Tangent;
+
+        prim.b0 = v0.Bitangent;
+        prim.b1 = v1.Bitangent;
+        prim.b2 = v2.Bitangent;
+
         prim.centroid = (prim.v0 + prim.v1 + prim.v2) / 3.0f;
 
         primitives.push_back(prim);
