@@ -12,6 +12,7 @@
 #include <engine/resources/Shader.hpp>
 #include <engine/resources/Skybox.hpp>
 #include <engine/resources/Texture.hpp>
+#include <memory>
 #include <string>
 #include <unordered_map>
 
@@ -125,9 +126,9 @@ private:
     */
     std::unordered_map<std::string, std::unique_ptr<Shader>> m_shaders;
 
-    std::unordered_map<std::string, std::unique_ptr<RayTracingModel>> m_rtmodels;
-
     std::unordered_map<std::string, std::unique_ptr<RawGeometry>> m_rawgs;
+
+    std::unordered_map<std::string, std::unique_ptr<RayTracingModel>> m_rtmodels;
 
     const std::filesystem::path m_models_path = "resources/models";
     const std::filesystem::path m_textures_path = "resources/textures";

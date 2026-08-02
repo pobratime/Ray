@@ -3,7 +3,7 @@
 // clang-format on
 #include "engine/graphics/RayTracingPipeline.hpp"
 #include "engine/graphics/OpenGL.hpp"
-#include "engine/resources/Model.hpp"
+#include "engine/resources/RayTracingModel.hpp"
 #include <vector>
 
 namespace engine::graphics {
@@ -11,7 +11,7 @@ void RayTracingPipeline::initialize() {
     setup_screen_quad();
 }
 
-void RayTracingPipeline::bind_resources(const std::vector<resources::Model *> &models) {
+void RayTracingPipeline::bind_resources(const std::vector<resources::RayTracingModel *> &models) {
     unsigned int counter = 0;
     for (unsigned int i = 0; i < static_cast<unsigned int>(models.size()); i++) {
         models[i]->bind(counter, counter + 1);

@@ -1,6 +1,8 @@
 #include "engine/resources/Mesh.hpp"
 #include "engine/resources/Model.hpp"
 #include "engine/resources/RayTracingModel.hpp"
+#include "engine/util/BlasTree.hpp"
+#include "engine/util/ThreadPool.hpp"
 #include <assimp/Importer.hpp>
 #include <assimp/mesh.h>
 #include <assimp/postprocess.h>
@@ -11,6 +13,7 @@
 #include <engine/resources/ShaderCompiler.hpp>
 #include <engine/util/Configuration.hpp>
 #include <engine/util/Errors.hpp>
+#include <future>
 #include <memory>
 #include <spdlog/spdlog.h>
 #include <utility>
@@ -23,7 +26,6 @@ void ResourcesController::initialize() {
     load_models();
     load_raw_geometry();
     build_bvhs();
-    // create_rtmodels();
     load_textures();
     load_skyboxes();
 }
@@ -95,7 +97,32 @@ void ResourcesController::load_raw_geometry() {
 };
 
 void ResourcesController::build_bvhs() {
-    // THREAD POOL
+    util::parallel::ThreadPool pool;
+    struct Unprocessed {
+        std::string name;
+        std::future<util::ds::BlasTree> future;
+    };
+    std::vector<Unprocessed> unprocessed{};
+    unprocessed.reserve(m_rawgs.size());
+    for (auto &g: m_rawgs) {
+        RawGeometry *r = g.second.get();
+        Unprocessed u{};
+        unprocessed.push_back(Unprocessed{
+                .name = g.first,
+                .future = pool.enqueue([r] {
+                    return util::ds::BlasTree(r->vertices(), r->indices());
+                })});
+    }
+
+    for (auto &u: unprocessed) {
+        m_rtmodels[u.name] = std::make_unique<RayTracingModel>(RayTracingModel(u.name, std::move(u.future.get())));
+    }
+
+    for (auto &rtm: m_rtmodels) {
+        rtm.second->m_bvh.upload_to_gpu();
+    }
+
+    m_rawgs.clear();
 }
 
 void ResourcesController::load_textures() {
@@ -181,10 +208,18 @@ RawGeometry *ResourcesController::rwg(const std::string &name) {
         }
         AssimpSceneProcessor scene_processor(this, scene, model_path);
         RawGeometry rw = scene_processor.process_raw_geometry();
-        // preuzimanje
         result = std::make_unique<RawGeometry>(std::move(rw));
     }
     return result.get();
+}
+
+RayTracingModel *ResourcesController::rtmodel(const std::string &name) {
+    auto it = m_rtmodels.find(name);
+    RG_GUARANTEE(it != m_rtmodels.end(),
+                 "No RayTracingModel named '{}' found. Make sure build_bvh_on_load is set to true in config.json "
+                 "and that '{}' is present under resources.models.",
+                 name, name);
+    return it->second.get();
 }
 
 Model *ResourcesController::model(const std::string &name) {

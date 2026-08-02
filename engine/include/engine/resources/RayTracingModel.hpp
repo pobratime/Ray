@@ -2,7 +2,8 @@
 
 #include "engine/resources/Mesh.hpp"
 #include "glm/fwd.hpp"
-#include <engine/util/BVHTree.hpp>
+#include <cstdint>
+#include <engine/util/BlasTree.hpp>
 #include <string>
 
 
@@ -14,6 +15,15 @@ public:
         : m_vertices(vertices)
         , m_indices(indices) {};
 
+    const std::vector<Vertex> &vertices() const {
+        return m_vertices;
+    }
+
+    const std::vector<uint32_t> &indices() const {
+        return m_indices;
+    }
+
+
 private:
     std::vector<Vertex> m_vertices;
     std::vector<glm::uint32_t> m_indices;
@@ -23,16 +33,17 @@ class RayTracingModel {
     friend class ResourcesController;
 
 public:
-    std::filesystem::path m_path;
     std::string m_name;
-    util::ds::BVHTree m_bvh;
+    util::ds::BlasTree m_bvh;
+    void bind(const unsigned int bvh, const unsigned int nodes) {
+        m_bvh.bind(bvh, nodes);
+    }
 
 private:
-    RayTracingModel(std::filesystem::path path,
-                    std::string name, util::ds::BVHTree bvh)
-        : m_path(path)
-        , m_name(name)
-        , m_bvh(bvh) {};
+    RayTracingModel(
+            std::string name, util::ds::BlasTree bvh)
+        : m_name(std::move(name))
+        , m_bvh(std::move(bvh)) {};
 };
 
 }// namespace engine::resources
