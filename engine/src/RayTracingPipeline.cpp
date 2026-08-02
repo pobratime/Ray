@@ -11,17 +11,8 @@ void RayTracingPipeline::initialize() {
     setup_screen_quad();
 }
 
-void RayTracingPipeline::bind_resources(const std::vector<resources::RayTracingModel *> &models) {
-    unsigned int counter = 0;
-    for (unsigned int i = 0; i < static_cast<unsigned int>(models.size()); i++) {
-        models[i]->bind(counter, counter + 1);
-        counter += 2;
-    }
-    CHECKED_GL_CALL(glBindVertexArray, m_quad_vao);
-    CHECKED_GL_CALL(glDrawArrays, GL_TRIANGLES, 0, 6);
-    CHECKED_GL_CALL(glBindVertexArray, 0);
+void RayTracingPipeline::register_models(std::vector<resources::RayTracingModel> &rtmodels) {
 }
-
 
 void RayTracingPipeline::setup_screen_quad() {
     static const float quad_vertices[] = {

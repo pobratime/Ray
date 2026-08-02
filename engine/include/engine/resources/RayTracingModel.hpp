@@ -39,7 +39,24 @@ public:
         m_bvh.bind(bvh, nodes);
     }
 
+    void position_model(const glm::vec3 &pos) {
+        m_position = pos;
+    }
+
+    void rotate_model(const glm::vec3 &rot) {
+        m_rotation = rot;
+    }
+
+    void scale_model(const glm::vec3 &scale) {
+        m_scale = scale;
+    }
+
 private:
+    // default if not set otherwise
+    glm::vec3 m_position{0.0f};
+    glm::vec3 m_rotation{0.0f};
+    glm::vec3 m_scale{1.0f};
+
     RayTracingModel(
             std::string name, util::ds::BlasTree bvh)
         : m_name(std::move(name))

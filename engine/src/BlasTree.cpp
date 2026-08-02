@@ -1,9 +1,9 @@
 // clang-format off
 #include <glad/glad.h>
 // clang-format on
+#include "engine/util/BlasTree.hpp"
 #include "engine/graphics/OpenGL.hpp"
 #include "engine/resources/Mesh.hpp"
-#include "engine/util/BlasTree.hpp"
 #include "glm/common.hpp"
 #include "glm/ext/vector_float3.hpp"
 #include <algorithm>
@@ -14,19 +14,19 @@
 
 namespace engine::util::ds {
 BlasTree::BlasTree(const std::vector<engine::resources::Vertex> &vertices,
-                 const std::vector<uint32_t> &indices) {
+                   const std::vector<uint32_t> &indices) {
 
     std::vector<CPUPrimitive> primitives = transform_to_cpu(vertices, indices);
-    std::vector<Node> nodes = build(primitives);
+    std::vector<BlasNode> nodes = build(primitives);
     std::vector<GPUPrimitive> g_primitives = transform_to_gpu(primitives);
     // THIS HAS TO BE MOVED SINCE OPENGL FUNCTIONS CAN ONLY BE CALLED FROM MAIN THREAD
     m_primitives = g_primitives;
     m_nodes = nodes;
-    // upload_to_gpu(g_primitives, nodes);
+    // upload_to_gpug_primitives, nodes);
 }
 
 std::vector<BlasTree::CPUPrimitive> BlasTree::transform_to_cpu(const std::vector<resources::Vertex> &vertices,
-                                                             const std::vector<uint32_t> &indices) {
+                                                               const std::vector<uint32_t> &indices) {
 
     std::vector<CPUPrimitive> primitives;
     primitives.reserve(indices.size() / 3);
@@ -104,7 +104,7 @@ void BlasTree::upload_to_gpu() {
     CHECKED_GL_CALL(glCreateBuffers, 1, &m_node_ssbo);
     CHECKED_GL_CALL(glNamedBufferStorage,
                     m_node_ssbo,
-                    m_nodes.size() * sizeof(Node),
+                    m_nodes.size() * sizeof(BlasNode),
                     m_nodes.data(),
                     GL_DYNAMIC_STORAGE_BIT);
     m_primitives.clear();
@@ -118,19 +118,19 @@ void BlasTree::bind(const unsigned int primitive_slot, const unsigned int node_s
     CHECKED_GL_CALL(glBindBufferBase, GL_SHADER_STORAGE_BUFFER, node_slot, m_node_ssbo);
 }
 
-std::vector<BlasTree::Node> BlasTree::build(std::vector<CPUPrimitive> &primitives) {
-    std::vector<Node> nodes{};
+std::vector<BlasTree::BlasNode> BlasTree::build(std::vector<CPUPrimitive> &primitives) {
+    std::vector<BlasNode> nodes{};
     nodes.reserve(2 * std::pow(2, log2(primitives.size())) - 1);
     build_recursive(primitives, nodes, 0, static_cast<uint32_t>(primitives.size()));
     return nodes;
 }
 
 uint32_t BlasTree::build_recursive(std::vector<CPUPrimitive> &primitives,
-                                  std::vector<Node> &nodes,
-                                  uint32_t start, uint32_t end) {
+                                   std::vector<BlasNode> &nodes,
+                                   uint32_t start, uint32_t end) {
 
     uint32_t node_index = nodes.size();
-    Node node{};
+    BlasNode node{};
     Bounds bounds = compute_bounds(start, end, primitives);
     node.min_bound = bounds.min;
     node.max_bound = bounds.max;
@@ -171,7 +171,7 @@ uint32_t BlasTree::build_recursive(std::vector<CPUPrimitive> &primitives,
 }
 
 BlasTree::Bounds BlasTree::compute_bounds(const uint32_t start, const uint32_t end,
-                                        const std::vector<CPUPrimitive> &primitives) {
+                                          const std::vector<CPUPrimitive> &primitives) {
     glm::vec3 min = glm::min(primitives[start].v0, glm::min(primitives[start].v1, primitives[start].v2));
     glm::vec3 max = glm::max(primitives[start].v0, glm::max(primitives[start].v1, primitives[start].v2));
     for (uint32_t i = start + 1; i < end; i++) {

@@ -10,8 +10,9 @@ namespace engine::util::ds {
 
 class BlasTree {
 public:
+    friend class TlasTree;
     explicit BlasTree(const std::vector<engine::resources::Vertex> &vertices,
-                     const std::vector<uint32_t> &indices);
+                      const std::vector<uint32_t> &indices);
     ~BlasTree() = default;
     BlasTree() = default;
 
@@ -28,7 +29,7 @@ private:
     };
 
     // ALLIGNED FOR SSBO
-    struct Node {
+    struct BlasNode {
         glm::vec3 min_bound;
         float pad0;
         glm::vec3 max_bound;
@@ -60,14 +61,14 @@ private:
     };
 
     std::vector<GPUPrimitive> m_primitives{};
-    std::vector<Node> m_nodes{};
+    std::vector<BlasNode> m_nodes{};
 
     unsigned int m_primitive_ssbo = 0;
     unsigned int m_node_ssbo = 0;
 
-    std::vector<Node> build(std::vector<CPUPrimitive> &primitives);
+    std::vector<BlasNode> build(std::vector<CPUPrimitive> &primitives);
     uint32_t build_recursive(std::vector<CPUPrimitive> &primitives,
-                             std::vector<Node> &nodes,
+                             std::vector<BlasNode> &nodes,
                              uint32_t start, uint32_t end);
     Bounds compute_bounds(const uint32_t start, const uint32_t end,
                           const std::vector<CPUPrimitive> &primitives);
