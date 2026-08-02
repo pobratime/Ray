@@ -2,8 +2,9 @@
 
 
 #include "engine/graphics/RayTracingPipeline.hpp"
-#include "engine/resources/Model.hpp"
+#include "engine/resources/RayTracingModel.hpp"
 #include "engine/resources/Shader.hpp"
+
 namespace engine::main::app {
 class Scene {
 public:
@@ -14,9 +15,9 @@ public:
 
 private:
     void setup_screen_quad();
-    std::vector<resources::Model *> models{};
-    resources::Model *m_bunny{};
-    resources::Model *m_teapot{};
+    std::vector<resources::RayTracingModel *> models{};
+    resources::RayTracingModel *m_bunny{};
+    resources::RayTracingModel *m_teapot{};
     resources::Shader *m_shader{};
     graphics::RayTracingPipeline m_pipeline{};
 };

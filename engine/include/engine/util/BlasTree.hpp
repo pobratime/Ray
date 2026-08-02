@@ -8,14 +8,16 @@
 namespace engine::util::ds {
 
 
-class BVHTree {
+class BlasTree {
 public:
-    explicit BVHTree(const std::vector<engine::resources::Vertex> &vertices,
+    explicit BlasTree(const std::vector<engine::resources::Vertex> &vertices,
                      const std::vector<uint32_t> &indices);
-    ~BVHTree() = default;
-    BVHTree() = default;
+    ~BlasTree() = default;
+    BlasTree() = default;
 
     void bind(const unsigned int primitive_slot, const unsigned int node_slot);
+
+    void upload_to_gpu();
 
 private:
     static constexpr uint32_t MAX_LEAF_PRIMITIVES = 4;
@@ -57,6 +59,9 @@ private:
         glm::vec4 b0, b1, b2;
     };
 
+    std::vector<GPUPrimitive> m_primitives{};
+    std::vector<Node> m_nodes{};
+
     unsigned int m_primitive_ssbo = 0;
     unsigned int m_node_ssbo = 0;
 
@@ -70,7 +75,5 @@ private:
     std::vector<CPUPrimitive> transform_to_cpu(const std::vector<resources::Vertex> &vertices,
                                                const std::vector<uint32_t> &indices);
     std::vector<GPUPrimitive> transform_to_gpu(std::vector<CPUPrimitive> &primitives);
-
-    void upload_to_gpu(std::vector<GPUPrimitive> &g_primitives, std::vector<Node> &nodes);
 };
 }// namespace engine::util::ds
