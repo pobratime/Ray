@@ -14,6 +14,7 @@ void main() {
 //#shader fragment
 #version 430 core
 
+// SSBO STRUCUTRES AND SSBOs
 struct TlasNode{
     // 12 + 4 + 12 + 4 + 4 + 4 + 4 + 4 = 32 + 16 = 48 bytes good
     vec3 min_bound;
@@ -73,8 +74,98 @@ layout(std430, binding = 3) readonly buffer InstancesBuffer{
     GPUInstance instances[];
 };
 
+// camera uniforms
+uniform vec3 u_camera_position;
+uniform vec3 u_camera_front;
+uniform vec3 u_camera_up;
+uniform vec3 u_camera_right;
+uniform vec3 u_fov_tan;
+uniform float u_aspect_ratio;
+
 out vec4 FragColor;
 
+struct Ray{
+    vec3 origin;
+    vec3 dir;
+    vec3 inv_dir;
+};
+
+bool triangle_intersection(Ray ray){
+
+}
+
+bool aabb_intersection(Ray ray, vec3 min_bound, vec3 max_bound){
+
+}
+
+
+bool traverse_blas(Ray ray, uint root_index){
+    // RECURSION WON'T WORK SO WE HAVE TO FAKE IT
+    uint stack[32];
+    stack[0] = root_index;
+    int stack_ptr = 1;
+    while(stack_ptr > 0){
+        uint node_index = stack_ptr[--stack_ptr];
+        Tlas node = tlas_tree[node_index];
+
+        vec3 min_bound = node.min_bound;
+        vec3 max_bound = node.max_bound;
+        bool hit_box = aabb_intersection(ray, min_bound, max_bound);
+        if(!hit_box){
+            continue;
+        }
+        if(node.instance_count != 0){
+
+        }else{
+            stack[stack_ptr++] = node.left_child;
+            stack[stack_ptr++] = node.right_child;
+        }
+    }
+
+    return false;
+}
+
+bool traverse_tlas(Ray ray, uint root_index){
+    // RECURSION WON'T WORK SO WE HAVE TO FAKE IT
+    uint stack[32];
+    stack[0] = root_index;
+    int stack_ptr = 1;
+    while(stack_ptr > 0){
+        // get node from to of the stack
+        uint node_index = stack_ptr[--stack_ptr];
+        Tlas node = tlas_tree[node_index];
+
+        vec3 min_bound = node.min_bound;
+        vec3 max_bound = node.max_bound;
+        bool hit_box = aabb_intersection(ray, min_bound, max_bound);
+        // no hit on the box, go back
+        if(!hit_box){
+            continue;
+        }
+        // we hit somethiing
+        // is it a leaf (model) ? 
+        // or an inner node (bounding box) ?
+        if(node.instance_count != 0){
+            Ray local;
+            uint model_root_index = tlas_tree[stack[stack_ptr]].first_instace;
+            bool hit_model = traverse_blas(local, model_root_index);
+            if(hit_model){
+                return true;
+            }
+        }else{
+            stack[stack_ptr++] = node.left_child;
+            stack[stack_ptr++] = node.right_child;
+        }
+    }
+    return false;
+}
+
 void main(){
-    FragColor = vec4(0.0, 0.5, 0.5, 1.0);    
+    Ray ray;
+    if(traverse_tlas(ray, 0)){
+
+    }else{
+        FragColor = vec4(0.1, 0.1, 0.1, 1.0);    
+    }
+
 }

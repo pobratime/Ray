@@ -4,7 +4,6 @@
 #include "engine/platform/PlatformController.hpp"
 #include "engine/resources/ResourcesController.hpp"
 #include "glm/ext/vector_float3.hpp"
-#include <vector>
 
 namespace engine::main::app {
 void Scene::initialize() {

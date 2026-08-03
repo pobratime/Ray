@@ -24,7 +24,6 @@ TlasTree::TlasTree(std::vector<resources::RayTracingModel *> &rt_models) {
         glm::vec3 world_min = glm::vec3(FLT_MAX);
         glm::vec3 world_max = glm::vec3(-FLT_MAX);
 
-
         bounds.emplace_back(world_min, world_max,
                             (world_min + world_max) * 0.5f, i);
 
