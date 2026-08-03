@@ -10,8 +10,10 @@ class TlasTree {
 public:
     struct TlasNode {
         glm::vec3 min_bound;
-        uint32_t left_child;
+        float pad0;
         glm::vec3 max_bound;
+        float pad1;
+        uint32_t left_child;
         uint32_t right_child;
         uint32_t first_instance;
         uint32_t instance_count;

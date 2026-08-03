@@ -2,12 +2,14 @@
 #include "engine/resources/RayTracingModel.hpp"
 #include "engine/util/BlasTree.hpp"
 #include "glm/common.hpp"
-#include <cfloat>
+#include <cassert>
 #include <cstdint>
 
 namespace engine::util::ds {
 
 TlasTree::TlasTree(std::vector<resources::RayTracingModel *> &rt_models) {
+    assert(!rt_models.empty());
+    // if (rt_models.empty()) return;
     std::vector<InstanceBounds> bounds{};
     bounds.reserve(rt_models.size());
     for (uint32_t i = 0; i < static_cast<uint32_t>(rt_models.size()); i++) {
@@ -17,18 +19,11 @@ TlasTree::TlasTree(std::vector<resources::RayTracingModel *> &rt_models) {
 
         glm::vec3 local_min = node.min_bound;
         glm::vec3 local_max = node.max_bound;
-        glm::vec3 world_min = glm::vec3(-FLT_MAX);
-        glm::vec3 world_max = glm::vec3(FLT_MAX);
 
-        for (int c = 0; c < 8; ++c) {
-            glm::vec3 corner(
-                    (c & 1) ? local_max.x : local_min.x,
-                    (c & 2) ? local_max.y : local_min.y,
-                    (c & 4) ? local_max.z : local_min.z);
-            glm::vec3 world_corner = glm::vec3(local_to_world * glm::vec4(corner, 1.0f));
-            world_min = glm::min(world_min, world_corner);
-            world_max = glm::max(world_max, world_corner);
-        }
+        // BUG IS HERE?????
+        glm::vec3 world_min = glm::vec3(FLT_MAX);
+        glm::vec3 world_max = glm::vec3(-FLT_MAX);
+
 
         bounds.emplace_back(world_min, world_max,
                             (world_min + world_max) * 0.5f, i);

@@ -15,7 +15,6 @@ public:
 
 private:
     void setup_screen_quad();
-    std::vector<resources::RayTracingModel *> models{};
     resources::RayTracingModel *m_bunny{};
     resources::RayTracingModel *m_teapot{};
     resources::Shader *m_shader{};

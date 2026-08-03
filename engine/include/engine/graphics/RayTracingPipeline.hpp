@@ -1,7 +1,6 @@
 #pragma once
 
-#include "engine/util/BlasTree.hpp"
-#include "engine/util/TlasTree.hpp"
+#include <cstdint>
 
 namespace engine::graphics {
 class RayTracingPipeline {
@@ -12,12 +11,12 @@ public:
 private:
     unsigned int m_global_primitives_ssbo = 0;
     unsigned int m_global_blas_ssbo = 0;
+    unsigned int m_tlas_ssbo = 0;
+    unsigned int m_instances_ssbo = 0;
 
+    void upload_global_data();
+    void bind_global_data();
     void setup_screen_quad();
-    void upload_global_blas();
-    void upload_global_primitives();
-    void bind_global_blas();
-    void bind_global_primitives();
     void upload_and_bind_tlas();
 
     uint32_t m_quad_vao = 0;

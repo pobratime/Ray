@@ -1,4 +1,5 @@
 // clang-format off
+#include <cstdint>
 #include <glad/glad.h>
 // clang-format on
 #include "engine/graphics/RayTracingPipeline.hpp"
@@ -8,22 +9,21 @@
 #include "engine/resources/ResourcesController.hpp"
 #include "engine/util/BlasTree.hpp"
 #include "engine/util/ThreadPool.hpp"
+#include "engine/util/TlasTree.hpp"
 #include <future>
-#include <ranges>// use maybe?
 #include <vector>
 
 namespace engine::graphics {
 void RayTracingPipeline::initialize() {
-    upload_global_blas();
-    upload_global_primitives();
+    upload_global_data();
     setup_screen_quad();
 }
 
 void RayTracingPipeline::render() {
     upload_and_bind_tlas();
-    bind_global_blas();
-    bind_global_primitives();
-    // OPENGL CALLS
+    CHECKED_GL_CALL(glBindVertexArray, m_quad_vao);
+    CHECKED_GL_CALL(glDrawArrays, GL_TRIANGLES, 0, 6);
+    CHECKED_GL_CALL(glBindVertexArray, 0);
 }
 
 void RayTracingPipeline::upload_and_bind_tlas() {
@@ -36,44 +36,89 @@ void RayTracingPipeline::upload_and_bind_tlas() {
         }
     }
     util::ds::TlasTree tlas_tree(active_rtmodels);
+    std::vector<util::ds::TlasTree::TlasNode> nodes = tlas_tree.nodes();
+    std::vector<util::ds::TlasTree::GPUInstance> instances = tlas_tree.instances();
+
+    if (m_tlas_ssbo) {
+        CHECKED_GL_CALL(glDeleteBuffers, 1, &m_tlas_ssbo);
+    }
+    CHECKED_GL_CALL(glCreateBuffers, 1, &m_tlas_ssbo);
+    CHECKED_GL_CALL(glNamedBufferStorage,
+                    m_tlas_ssbo,
+                    sizeof(util::ds::TlasTree::TlasNode) * nodes.size(),
+                    (const void *) nodes.data(),
+                    GL_DYNAMIC_STORAGE_BIT);
+
+    CHECKED_GL_CALL(glBindBufferBase, GL_SHADER_STORAGE_BUFFER, 2, m_tlas_ssbo);
+
+    if (m_instances_ssbo) {
+        CHECKED_GL_CALL(glDeleteBuffers, 1, &m_instances_ssbo);
+    }
+    CHECKED_GL_CALL(glCreateBuffers, 1, &m_instances_ssbo);
+    CHECKED_GL_CALL(glNamedBufferStorage,
+                    m_instances_ssbo,
+                    sizeof(util::ds::TlasTree::GPUInstance) * instances.size(),
+                    (const void *) instances.data(),
+                    GL_DYNAMIC_STORAGE_BIT);
+
+    CHECKED_GL_CALL(glBindBufferBase, GL_SHADER_STORAGE_BUFFER, 3, m_instances_ssbo);
 }
 
-void RayTracingPipeline::upload_global_blas() {
+void RayTracingPipeline::upload_global_data() {
     const auto res_con = engine::core::Controller::get<resources::ResourcesController>();
-    util::parallel::ThreadPool pool;
+
     std::vector<resources::RayTracingModel *> rtmodels = res_con->rtmodels();
+
     std::vector<std::future<void>> futures{};
+    util::parallel::ThreadPool pool;
     for (auto &r: rtmodels) {
-        pool.enqueue([r] {
+        futures.push_back(pool.enqueue([r] {
             r->build_bvh();
-        });
+        }));
     }
     for (auto &f: futures) {
         f.get();
     }
 
-    // maybe do a std::move here?
-
-    // upload part
     std::vector<util::ds::BlasTree::BlasNode> nodes{};
-    for (auto &r: rtmodels) {
-        const auto blas = r->m_blas.nodes();
-        nodes.insert(nodes.end(), blas.begin(), blas.end());
-    }
+    uint32_t node_offset = 0;
 
-    // don't forget blass_root_offset !!!
-    // OPENGL CALLS
-}
-
-void RayTracingPipeline::upload_global_primitives() {
-    const auto res_con = engine::core::Controller::get<resources::ResourcesController>();
-    std::vector<resources::RayTracingModel *> rtmodels = res_con->rtmodels();
     std::vector<util::ds::BlasTree::GPUPrimitive> primitives{};
+    uint32_t primitive_offset = 0;
+
     for (auto &r: rtmodels) {
-        // primitives.insert(primitives.end(), r->m_blas.nodes().begin(), r->m_blas.nodes().end());
+        const auto blas_nodes = r->m_blas.nodes();
+        r->m_blas_root_offset = node_offset;
+        for (const auto &n: blas_nodes) {
+            util::ds::BlasTree::BlasNode node = n;
+            if (node.primitive_count > 0) {
+                node.first_primitive += primitive_offset;
+            } else {
+                node.left_child += node_offset;
+                node.right_child += node_offset;
+            }
+            nodes.push_back(node);
+        }
+        primitives.insert(primitives.end(), r->m_blas.primitives().begin(), r->m_blas.primitives().end());
+        node_offset += static_cast<uint32_t>(blas_nodes.size());
+        primitive_offset += static_cast<uint32_t>(r->m_blas.primitives().size());
     }
-    // maybe do a std::move here?
-    // OPENGL CALLS
+
+    CHECKED_GL_CALL(glCreateBuffers, 1, &m_global_blas_ssbo);
+    CHECKED_GL_CALL(glNamedBufferStorage,
+                    m_global_blas_ssbo,
+                    sizeof(util::ds::BlasTree::BlasNode) * nodes.size(),
+                    (const void *) nodes.data(),
+                    GL_DYNAMIC_STORAGE_BIT);
+    CHECKED_GL_CALL(glBindBufferBase, GL_SHADER_STORAGE_BUFFER, 0, m_global_blas_ssbo);
+
+    CHECKED_GL_CALL(glCreateBuffers, 1, &m_global_primitives_ssbo);
+    CHECKED_GL_CALL(glNamedBufferStorage,
+                    m_global_primitives_ssbo,
+                    sizeof(util::ds::BlasTree::GPUPrimitive) * primitives.size(),
+                    (const void *) primitives.data(),
+                    GL_DYNAMIC_STORAGE_BIT);
+    CHECKED_GL_CALL(glBindBufferBase, GL_SHADER_STORAGE_BUFFER, 1, m_global_primitives_ssbo);
 }
 
 void RayTracingPipeline::setup_screen_quad() {
