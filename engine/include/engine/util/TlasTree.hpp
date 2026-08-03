@@ -48,10 +48,14 @@ private:
         uint32_t instance_index;
     };
 
-    uint32_t build_recursive(std::vector<InstanceBounds> &bounds, uint32_t start, uint32_t end);
+    uint32_t build_recursive(std::vector<InstanceBounds> &bounds,
+                             uint32_t start, uint32_t end);
 
     std::vector<TlasNode> m_nodes;
     std::vector<GPUInstance> m_instances;
+
+    InstanceBounds compute_bounds(std::vector<InstanceBounds> &bounds,
+                                  uint32_t start, uint32_t end);
 
     static constexpr uint32_t MAX_LEAF_INSTANCES = 1;
 };

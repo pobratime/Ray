@@ -7,7 +7,6 @@
 #include <engine/util/BlasTree.hpp>
 #include <string>
 
-
 namespace engine::resources {
 class RawGeometry {
 public:
@@ -23,7 +22,6 @@ public:
     const std::vector<uint32_t> &indices() const {
         return m_indices;
     }
-
 
 private:
     std::vector<Vertex> m_vertices;
@@ -95,12 +93,14 @@ public:
     }
 
 private:
+    bool m_active = false;
+
     std::string m_name;
     std::string m_path;
-    bool m_active = false;
+
     std::vector<Vertex> m_vertices;
     std::vector<uint32_t> m_indices;
-    // default if not set otherwise
+
     glm::vec3 m_position{0.0f};
     glm::vec3 m_rotation{0.0f};
     glm::vec3 m_scale{1.0f};
