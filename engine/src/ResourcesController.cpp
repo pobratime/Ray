@@ -1,8 +1,6 @@
 #include "engine/resources/Mesh.hpp"
 #include "engine/resources/Model.hpp"
 #include "engine/resources/RayTracingModel.hpp"
-#include "engine/util/BlasTree.hpp"
-#include "engine/util/ThreadPool.hpp"
 #include <assimp/Importer.hpp>
 #include <assimp/mesh.h>
 #include <assimp/postprocess.h>
@@ -13,7 +11,6 @@
 #include <engine/resources/ShaderCompiler.hpp>
 #include <engine/util/Configuration.hpp>
 #include <engine/util/Errors.hpp>
-#include <future>
 #include <memory>
 #include <spdlog/spdlog.h>
 #include <utility>
@@ -24,8 +21,7 @@ namespace engine::resources {
 void ResourcesController::initialize() {
     load_shaders();
     load_models();
-    load_raw_geometry();
-    build_bvhs();
+    load_rtmodels();
     load_textures();
     load_skyboxes();
 }
@@ -77,7 +73,7 @@ void ResourcesController::load_models() {
     }
 }
 
-void ResourcesController::load_raw_geometry() {
+void ResourcesController::load_rtmodels() {
     if (!exists(m_models_path)) {
         spdlog::info("[ResourcesController]: no {} found to load the models from", m_models_path.string());
         return;
@@ -92,38 +88,9 @@ void ResourcesController::load_raw_geometry() {
         return;
     }
     for (const auto &model_entry: config["resources"]["models"].items()) {
-        rwg(model_entry.key());
+        rtmodel(model_entry.key());
     }
 };
-
-void ResourcesController::build_bvhs() {
-    util::parallel::ThreadPool pool;
-    struct Unprocessed {
-        std::string name;
-        std::future<util::ds::BlasTree> future;
-    };
-    std::vector<Unprocessed> unprocessed{};
-    unprocessed.reserve(m_rawgs.size());
-    for (auto &g: m_rawgs) {
-        RawGeometry *r = g.second.get();
-        Unprocessed u{};
-        unprocessed.push_back(Unprocessed{
-                .name = g.first,
-                .future = pool.enqueue([r] {
-                    return util::ds::BlasTree(r->vertices(), r->indices());
-                })});
-    }
-
-    for (auto &u: unprocessed) {
-        m_rtmodels[u.name] = std::make_unique<RayTracingModel>(RayTracingModel(u.name, std::move(u.future.get())));
-    }
-
-    for (auto &rtm: m_rtmodels) {
-        rtm.second->m_bvh.upload_to_gpu();
-    }
-
-    m_rawgs.clear();
-}
 
 void ResourcesController::load_textures() {
     if (!exists(m_textures_path)) {
@@ -184,8 +151,8 @@ private:
     ResourcesController *m_resources_controller;
 };
 
-RawGeometry *ResourcesController::rwg(const std::string &name) {
-    auto &result = m_rawgs[name];
+RayTracingModel *ResourcesController::rtmodel(const std::string &name) {
+    auto &result = m_rtmodels[name];
     if (!result) {
         auto &config = util::Configuration::config();
         if (!config["resources"]["models"].contains(name)) {
@@ -208,18 +175,19 @@ RawGeometry *ResourcesController::rwg(const std::string &name) {
         }
         AssimpSceneProcessor scene_processor(this, scene, model_path);
         RawGeometry rw = scene_processor.process_raw_geometry();
-        result = std::make_unique<RawGeometry>(std::move(rw));
+        result = std::make_unique<RayTracingModel>(RayTracingModel(std::move(name), std::move(model_path), std::move(rw.vertices()), std::move(rw.indices())));
     }
     return result.get();
 }
 
-RayTracingModel *ResourcesController::rtmodel(const std::string &name) {
-    auto it = m_rtmodels.find(name);
-    RG_GUARANTEE(it != m_rtmodels.end(),
-                 "No RayTracingModel named '{}' found. Make sure build_bvh_on_load is set to true in config.json "
-                 "and that '{}' is present under resources.models.",
-                 name, name);
-    return it->second.get();
+
+std::vector<RayTracingModel *> ResourcesController::rtmodels() {
+    std::vector<RayTracingModel *> result;
+    result.reserve(m_rtmodels.size());
+    for (auto &[name, model]: m_rtmodels) {
+        result.push_back(model.get());
+    }
+    return result;
 }
 
 Model *ResourcesController::model(const std::string &name) {

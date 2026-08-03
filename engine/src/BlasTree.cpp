@@ -1,15 +1,10 @@
-// clang-format off
-#include <glad/glad.h>
-// clang-format on
 #include "engine/util/BlasTree.hpp"
-#include "engine/graphics/OpenGL.hpp"
 #include "engine/resources/Mesh.hpp"
 #include "glm/common.hpp"
 #include "glm/ext/vector_float3.hpp"
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
-#include <glad/glad.h>
 #include <vector>
 
 namespace engine::util::ds {
@@ -19,10 +14,8 @@ BlasTree::BlasTree(const std::vector<engine::resources::Vertex> &vertices,
     std::vector<CPUPrimitive> primitives = transform_to_cpu(vertices, indices);
     std::vector<BlasNode> nodes = build(primitives);
     std::vector<GPUPrimitive> g_primitives = transform_to_gpu(primitives);
-    // THIS HAS TO BE MOVED SINCE OPENGL FUNCTIONS CAN ONLY BE CALLED FROM MAIN THREAD
     m_primitives = g_primitives;
     m_nodes = nodes;
-    // upload_to_gpug_primitives, nodes);
 }
 
 std::vector<BlasTree::CPUPrimitive> BlasTree::transform_to_cpu(const std::vector<resources::Vertex> &vertices,
@@ -91,31 +84,6 @@ std::vector<BlasTree::GPUPrimitive> BlasTree::transform_to_gpu(std::vector<CPUPr
         g_primitives.push_back(gpu);
     }
     return g_primitives;
-}
-
-void BlasTree::upload_to_gpu() {
-    CHECKED_GL_CALL(glCreateBuffers, 1, &m_primitive_ssbo);
-    CHECKED_GL_CALL(glNamedBufferStorage,
-                    m_primitive_ssbo,
-                    m_primitives.size() * sizeof(GPUPrimitive),
-                    m_primitives.data(),
-                    GL_DYNAMIC_STORAGE_BIT);
-
-    CHECKED_GL_CALL(glCreateBuffers, 1, &m_node_ssbo);
-    CHECKED_GL_CALL(glNamedBufferStorage,
-                    m_node_ssbo,
-                    m_nodes.size() * sizeof(BlasNode),
-                    m_nodes.data(),
-                    GL_DYNAMIC_STORAGE_BIT);
-    m_primitives.clear();
-    m_primitives.shrink_to_fit();
-    m_nodes.clear();
-    m_nodes.shrink_to_fit();
-}
-
-void BlasTree::bind(const unsigned int primitive_slot, const unsigned int node_slot) {
-    CHECKED_GL_CALL(glBindBufferBase, GL_SHADER_STORAGE_BUFFER, primitive_slot, m_primitive_ssbo);
-    CHECKED_GL_CALL(glBindBufferBase, GL_SHADER_STORAGE_BUFFER, node_slot, m_node_ssbo);
 }
 
 std::vector<BlasTree::BlasNode> BlasTree::build(std::vector<CPUPrimitive> &primitives) {

@@ -2,16 +2,65 @@
 #include <glad/glad.h>
 // clang-format on
 #include "engine/graphics/RayTracingPipeline.hpp"
+#include "engine/core/Controller.hpp"
 #include "engine/graphics/OpenGL.hpp"
 #include "engine/resources/RayTracingModel.hpp"
+#include "engine/resources/ResourcesController.hpp"
+#include "engine/util/BlasTree.hpp"
+#include "engine/util/ThreadPool.hpp"
+#include <future>
 #include <vector>
 
 namespace engine::graphics {
 void RayTracingPipeline::initialize() {
+    upload_global_blas();
+    upload_global_primitives();
     setup_screen_quad();
 }
 
-void RayTracingPipeline::register_models(std::vector<resources::RayTracingModel> &rtmodels) {
+void RayTracingPipeline::render() {
+    const auto res_con = engine::core::Controller::get<resources::ResourcesController>();
+    std::vector<resources::RayTracingModel *> rtmodels = res_con->rtmodels();
+    std::vector<resources::RayTracingModel *> active_rtmodels{};
+    for (auto &r: rtmodels) {
+        if (r->is_active()) {
+            active_rtmodels.push_back(r);
+        }
+    }
+    util::ds::TlasTree tlas_tree(active_rtmodels);
+    upload_and_bind_tlas(tlas_tree);
+}
+
+void RayTracingPipeline::upload_global_blas() {
+    const auto res_con = engine::core::Controller::get<resources::ResourcesController>();
+    util::parallel::ThreadPool pool;
+    std::vector<resources::RayTracingModel *> rtmodels = res_con->rtmodels();
+    std::vector<std::future<void>> futures{};
+    for (auto &r: rtmodels) {
+        pool.enqueue([r] {
+            r->build_bvh();
+        });
+    }
+    for (auto &f: futures) {
+        f.get();
+    }
+
+    // upload part
+    std::vector<util::ds::BlasTree::BlasNode> nodes{};
+    for (auto &r: rtmodels) {
+        const auto blas = r->m_blas.nodes();
+        nodes.insert(nodes.end(), blas.begin(), blas.end());
+    }
+
+    // don't forget blass_root_offset !!!
+}
+
+void RayTracingPipeline::upload_global_primitives() {
+    const auto res_con = engine::core::Controller::get<resources::ResourcesController>();
+    std::vector<resources::RayTracingModel *> rtmodels = res_con->rtmodels();
+    std::vector<util::ds::BlasTree::GPUPrimitive> primitives;
+    for (auto &r: rtmodels) {
+    }
 }
 
 void RayTracingPipeline::setup_screen_quad() {

@@ -9,19 +9,15 @@ namespace engine::util::ds {
 
 
 class BlasTree {
-public:
     friend class TlasTree;
-    explicit BlasTree(const std::vector<engine::resources::Vertex> &vertices,
-                      const std::vector<uint32_t> &indices);
-    ~BlasTree() = default;
+
+public:
     BlasTree() = default;
 
-    void bind(const unsigned int primitive_slot, const unsigned int node_slot);
+    explicit BlasTree(const std::vector<engine::resources::Vertex> &vertices,
+                      const std::vector<uint32_t> &indices);
 
-    void upload_to_gpu();
-
-private:
-    static constexpr uint32_t MAX_LEAF_PRIMITIVES = 4;
+    ~BlasTree() = default;
 
     struct Bounds {
         glm::vec3 min;
@@ -42,15 +38,6 @@ private:
         uint32_t primitive_count = 0;
     };
 
-    struct CPUPrimitive {
-        glm::vec3 v0, v1, v2;
-        glm::vec3 n0, n1, n2;
-        glm::vec2 uv0, uv1, uv2;
-        glm::vec3 t0, t1, t2;
-        glm::vec3 b0, b1, b2;
-        glm::vec3 centroid;
-    };
-
     // ALLIGNED FOR SSBO
     struct GPUPrimitive {
         glm::vec4 v0, v1, v2;
@@ -60,11 +47,28 @@ private:
         glm::vec4 b0, b1, b2;
     };
 
+    const std::vector<GPUPrimitive> &primitives() const {
+        return m_primitives;
+    }
+
+    const std::vector<BlasNode> &nodes() const {
+        return m_nodes;
+    }
+
+private:
+    static constexpr uint32_t MAX_LEAF_PRIMITIVES = 4;
+
+    struct CPUPrimitive {
+        glm::vec3 v0, v1, v2;
+        glm::vec3 n0, n1, n2;
+        glm::vec2 uv0, uv1, uv2;
+        glm::vec3 t0, t1, t2;
+        glm::vec3 b0, b1, b2;
+        glm::vec3 centroid;
+    };
+
     std::vector<GPUPrimitive> m_primitives{};
     std::vector<BlasNode> m_nodes{};
-
-    unsigned int m_primitive_ssbo = 0;
-    unsigned int m_node_ssbo = 0;
 
     std::vector<BlasNode> build(std::vector<CPUPrimitive> &primitives);
     uint32_t build_recursive(std::vector<CPUPrimitive> &primitives,

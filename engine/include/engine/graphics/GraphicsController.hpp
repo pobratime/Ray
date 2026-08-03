@@ -159,7 +159,7 @@ private:
     */
     void initialize() override;
 
-    void terminate();
+    void terminate() override;
 
     PerspectiveMatrixParams m_perspective_params{};
     OrthographicMatrixParams m_ortho_params{};

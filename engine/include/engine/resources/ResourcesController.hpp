@@ -15,6 +15,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 namespace engine::resources {
 /**
@@ -27,7 +28,8 @@ public:
         return "ResourcesController";
     }
 
-    RawGeometry *rwg(const std::string &name);
+    std::vector<RayTracingModel *> rtmodels();
+
     RayTracingModel *rtmodel(const std::string &name);
 
     /**
@@ -106,8 +108,7 @@ private:
     */
     void load_shaders();
 
-    void load_raw_geometry();
-    void build_bvhs();
+    void load_rtmodels();
 
     /**
     * @brief A hashmap of all the loaded @ref Model.
@@ -125,8 +126,6 @@ private:
     * @brief A hashmap of all the loaded @ref Shader.
     */
     std::unordered_map<std::string, std::unique_ptr<Shader>> m_shaders;
-
-    std::unordered_map<std::string, std::unique_ptr<RawGeometry>> m_rawgs;
 
     std::unordered_map<std::string, std::unique_ptr<RayTracingModel>> m_rtmodels;
 
