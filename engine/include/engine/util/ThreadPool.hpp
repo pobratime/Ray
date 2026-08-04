@@ -14,9 +14,15 @@
 namespace engine::util::parallel {
 class ThreadPool {
 public:
+    ThreadPool(const ThreadPool &) = delete;
+    ThreadPool &operator=(const ThreadPool &) = delete;
+
+    ThreadPool(ThreadPool &&) = delete;
+    ThreadPool &operator=(ThreadPool &&) = delete;
+
     ThreadPool(size_t n_threads = 1) {
+        m_threads.reserve(n_threads);
         for (size_t i = 0; i < n_threads; i++) {
-            m_threads.reserve(n_threads);
             m_threads.emplace_back([this] {
                 for (;;) {
                     std::unique_lock<std::mutex> lock(this->m_mutex);
