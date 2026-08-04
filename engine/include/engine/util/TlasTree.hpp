@@ -1,3 +1,5 @@
+#pragma once
+
 #include "engine/resources/RayTracingModel.hpp"
 #include "engine/util/BlasTree.hpp"
 #include <cstdint>
@@ -30,9 +32,7 @@ public:
 
     TlasTree() = default;
 
-    TlasTree(std::vector<resources::RayTracingModel *> &rt_models);
-
-    ~TlasTree() = default;
+    explicit TlasTree(std::vector<resources::RayTracingModel *> &rt_models);
 
     const std::vector<TlasNode> &nodes() const {
         return m_nodes;

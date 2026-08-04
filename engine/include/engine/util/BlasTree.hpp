@@ -1,13 +1,10 @@
 #pragma once
 
 #include "engine/resources/Mesh.hpp"
-#include "glm/ext/vector_float3.hpp"
 #include <cstdint>
 #include <vector>
 
 namespace engine::util::ds {
-
-
 class BlasTree {
     friend class TlasTree;
 
@@ -72,13 +69,12 @@ private:
 
     std::vector<BlasNode> build(std::vector<CPUPrimitive> &primitives);
     uint32_t build_recursive(std::vector<CPUPrimitive> &primitives,
-                             std::vector<BlasNode> &nodes,
                              uint32_t start, uint32_t end);
-    Bounds compute_bounds(const uint32_t start, const uint32_t end,
+    Bounds compute_bounds(uint32_t start, uint32_t end,
                           const std::vector<CPUPrimitive> &primitives);
 
     std::vector<CPUPrimitive> transform_to_cpu(const std::vector<resources::Vertex> &vertices,
                                                const std::vector<uint32_t> &indices);
-    std::vector<GPUPrimitive> transform_to_gpu(std::vector<CPUPrimitive> &primitives);
+    std::vector<GPUPrimitive> transform_to_gpu(const std::vector<CPUPrimitive> &primitives);
 };
 }// namespace engine::util::ds

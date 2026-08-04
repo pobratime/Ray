@@ -6,10 +6,8 @@
 #include <cstdint>
 
 namespace engine::util::ds {
-
 TlasTree::TlasTree(std::vector<resources::RayTracingModel *> &rt_models) {
-    assert(!rt_models.empty());
-    // if (rt_models.empty()) return;
+    if (rt_models.empty()) return;
     std::vector<InstanceBounds> bounds{};
     bounds.reserve(rt_models.size());
     for (uint32_t i = 0; i < static_cast<uint32_t>(rt_models.size()); i++) {
@@ -20,16 +18,16 @@ TlasTree::TlasTree(std::vector<resources::RayTracingModel *> &rt_models) {
         glm::vec3 local_min = node.min_bound;
         glm::vec3 local_max = node.max_bound;
 
-        glm::vec3 world_min = glm::vec3(FLT_MAX);
-        glm::vec3 world_max = glm::vec3(-FLT_MAX);
+        auto world_min = glm::vec3(FLT_MAX);
+        auto world_max = glm::vec3(-FLT_MAX);
 
         for (int c = 0; c < 8; ++c) {
-            glm::vec3 corner = glm::vec3(
+            auto corner = glm::vec3(
                     (c & 1) ? local_max.x : local_min.x,
                     (c & 2) ? local_max.y : local_min.y,
                     (c & 4) ? local_max.z : local_min.z);
 
-            glm::vec3 world_corner = glm::vec3(local_to_world * glm::vec4(corner, 1.0f));
+            auto world_corner = glm::vec3(local_to_world * glm::vec4(corner, 1.0f));
             world_min = glm::min(world_min, world_corner);
             world_max = glm::max(world_max, world_corner);
         }
@@ -48,10 +46,9 @@ TlasTree::TlasTree(std::vector<resources::RayTracingModel *> &rt_models) {
 
 uint32_t TlasTree::build_recursive(std::vector<InstanceBounds> &bounds,
                                    uint32_t start, uint32_t end) {
-
-    uint32_t node_index = static_cast<uint32_t>(m_nodes.size());
+    const auto node_index = static_cast<uint32_t>(m_nodes.size());
     TlasNode node{};
-    InstanceBounds b = compute_bounds(bounds, start, end);
+    const InstanceBounds b = compute_bounds(bounds, start, end);
     node.min_bound = b.min;
     node.max_bound = b.max;
     m_nodes.push_back(node);
@@ -80,8 +77,8 @@ uint32_t TlasTree::build_recursive(std::vector<InstanceBounds> &bounds,
                          return a.centroid[axis] < b.centroid[axis];
                      });
 
-    uint32_t left = build_recursive(bounds, start, mid);
-    uint32_t right = build_recursive(bounds, mid, end);
+    const uint32_t left = build_recursive(bounds, start, mid);
+    const uint32_t right = build_recursive(bounds, mid, end);
     m_nodes[node_index].left_child = left;
     m_nodes[node_index].right_child = right;
     m_nodes[node_index].instance_count = 0;

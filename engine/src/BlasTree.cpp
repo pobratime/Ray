@@ -9,17 +9,14 @@
 namespace engine::util::ds {
 BlasTree::BlasTree(const std::vector<engine::resources::Vertex> &vertices,
                    const std::vector<uint32_t> &indices) {
-
     std::vector<CPUPrimitive> primitives = transform_to_cpu(vertices, indices);
-    std::vector<BlasNode> nodes = build(primitives);
-    std::vector<GPUPrimitive> g_primitives = transform_to_gpu(primitives);
-    m_primitives = g_primitives;
-    m_nodes = nodes;
+    m_nodes.reserve(2 * std::pow(2, log2(primitives.size())) - 1);
+    build_recursive(primitives, 0, static_cast<uint32_t>(primitives.size()));
+    m_primitives = transform_to_gpu(primitives);
 }
 
 std::vector<BlasTree::CPUPrimitive> BlasTree::transform_to_cpu(const std::vector<resources::Vertex> &vertices,
                                                                const std::vector<uint32_t> &indices) {
-
     std::vector<CPUPrimitive> primitives;
     primitives.reserve(indices.size() / 3);
     for (uint32_t i = 0; i < indices.size(); i += 3) {
@@ -55,10 +52,10 @@ std::vector<BlasTree::CPUPrimitive> BlasTree::transform_to_cpu(const std::vector
     return primitives;
 }
 
-std::vector<BlasTree::GPUPrimitive> BlasTree::transform_to_gpu(std::vector<CPUPrimitive> &primitives) {
+std::vector<BlasTree::GPUPrimitive> BlasTree::transform_to_gpu(const std::vector<CPUPrimitive> &primitives) {
     std::vector<GPUPrimitive> g_primitives{};
     g_primitives.reserve(primitives.size());
-    for (auto prim : primitives) {
+    for (auto prim: primitives) {
         GPUPrimitive gpu{};
         gpu.v0 = glm::vec4(prim.v0, 1.0f);
         gpu.v1 = glm::vec4(prim.v1, 1.0f);
@@ -84,38 +81,29 @@ std::vector<BlasTree::GPUPrimitive> BlasTree::transform_to_gpu(std::vector<CPUPr
     return g_primitives;
 }
 
-std::vector<BlasTree::BlasNode> BlasTree::build(std::vector<CPUPrimitive> &primitives) {
-    std::vector<BlasNode> nodes{};
-    nodes.reserve(2 * std::pow(2, log2(primitives.size())) - 1);
-    build_recursive(primitives, nodes, 0, static_cast<uint32_t>(primitives.size()));
-    return nodes;
-}
-
 uint32_t BlasTree::build_recursive(std::vector<CPUPrimitive> &primitives,
-                                   std::vector<BlasNode> &nodes,
-                                   uint32_t start, uint32_t end) {
-
-    uint32_t node_index = nodes.size();
+                                   const uint32_t start, const uint32_t end) {
+    const uint32_t node_index = m_nodes.size();
     BlasNode node{};
     Bounds bounds = compute_bounds(start, end, primitives);
     node.min_bound = bounds.min;
     node.max_bound = bounds.max;
-    nodes.push_back(node);
+    m_nodes.push_back(node);
     if (end - start <= MAX_LEAF_PRIMITIVES) {
-        nodes[node_index].first_primitive = start;
-        nodes[node_index].primitive_count = end - start;
+        m_nodes[node_index].first_primitive = start;
+        m_nodes[node_index].primitive_count = end - start;
         return node_index;
     }
 
-    glm::vec3 diff = nodes[node_index].max_bound - nodes[node_index].min_bound;
+    glm::vec3 diff = m_nodes[node_index].max_bound - m_nodes[node_index].min_bound;
 
     int axis = 0;                     // x
     if (diff.y > diff.x) axis = 1;    // y
     if (diff.z > diff[axis]) axis = 2;//z
     // forcing leaf case in case cube is degenrated
     if (diff.x == 0.0f && diff.y == 0.0f && diff.z == 0.0f) {
-        nodes[node_index].first_primitive = start;
-        nodes[node_index].primitive_count = end - start;
+        m_nodes[node_index].first_primitive = start;
+        m_nodes[node_index].primitive_count = end - start;
         return node_index;
     }
     const uint32_t mid = (start + end) / 2;
@@ -127,11 +115,11 @@ uint32_t BlasTree::build_recursive(std::vector<CPUPrimitive> &primitives,
                 return a.centroid[axis] < b.centroid[axis];
             });
 
-    uint32_t left = build_recursive(primitives, nodes, start, mid);
-    uint32_t right = build_recursive(primitives, nodes, mid, end);
-    nodes[node_index].left_child = left;
-    nodes[node_index].right_child = right;
-    nodes[node_index].primitive_count = 0;
+    const uint32_t left = build_recursive(primitives, start, mid);
+    const uint32_t right = build_recursive(primitives, mid, end);
+    m_nodes[node_index].left_child = left;
+    m_nodes[node_index].right_child = right;
+    m_nodes[node_index].primitive_count = 0;
 
     return node_index;
 }
@@ -150,7 +138,6 @@ BlasTree::Bounds BlasTree::compute_bounds(const uint32_t start, const uint32_t e
         max = glm::max(max, glm::vec3(p.v1));
         max = glm::max(max, glm::vec3(p.v2));
     }
-    return Bounds{min, max};
+    return Bounds{.min = min, .max = max};
 }
-
 }// namespace engine::util::ds

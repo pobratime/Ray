@@ -1,7 +1,6 @@
 #pragma once
 
 #include <condition_variable>
-#include <cstddef>
 #include <functional>
 #include <future>
 #include <mutex>
@@ -20,7 +19,10 @@ public:
     ThreadPool(ThreadPool &&) = delete;
     ThreadPool &operator=(ThreadPool &&) = delete;
 
-    ThreadPool(size_t n_threads = 1) {
+    explicit ThreadPool(size_t n_threads = std::thread::hardware_concurrency() - 1) {
+        if (n_threads == 0) {
+            n_threads = 1;
+        }
         m_threads.reserve(n_threads);
         for (size_t i = 0; i < n_threads; i++) {
             m_threads.emplace_back([this] {
@@ -38,6 +40,7 @@ public:
             });
         }
     }
+
     ~ThreadPool() {
         {
             std::lock_guard<std::mutex> lock(m_mutex);
@@ -53,9 +56,10 @@ public:
     auto enqueue(F &&f, Args &&...args) -> std::future<std::invoke_result_t<F, Args...>> {
         using return_type = std::invoke_result_t<F, Args...>;
         // auto task = std::make_shared<std::packaged_task<return_type()>>(std::bind<return_type>(std::forward<F>(f), std::forward<Args>(args)...));
-        auto task = std::make_shared<std::packaged_task<return_type()>>([f = std::forward<F>(f), ... args = std::forward<Args>(args)] {
-            return f(args...);
-        });
+        auto task = std::make_shared<std::packaged_task<return_type()>>(
+                [f = std::forward<F>(f), ... args = std::forward<Args>(args)] {
+                    return f(args...);
+                });
         std::future<return_type> res = task->get_future();
         {
             std::unique_lock<std::mutex> lock(m_mutex);

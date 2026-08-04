@@ -5,8 +5,6 @@
 #include <assimp/mesh.h>
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
-#include <cstddef>
-#include <cstdint>
 #include <engine/graphics/OpenGL.hpp>
 #include <engine/resources/ResourcesController.hpp>
 #include <engine/resources/ShaderCompiler.hpp>
@@ -18,7 +16,6 @@
 #include <vector>
 
 namespace engine::resources {
-
 void ResourcesController::initialize() {
     load_shaders();
     load_models();
@@ -100,15 +97,15 @@ void ResourcesController::load_skyboxes() {
 }
 
 /**
- * @class AssimpSceneProcessor
- * @brief Processes the meshes in an Assimp scene.
- */
+     * @class AssimpSceneProcessor
+     * @brief Processes the meshes in an Assimp scene.
+     */
 class AssimpSceneProcessor {
 public:
     /**
-     * @brief Processes the meshes in the scene.
-     * @returns The meshes in the scene.
-     */
+         * @brief Processes the meshes in the scene.
+         * @returns The meshes in the scene.
+         */
 
 
     std::vector<Mesh> process_meshes();
@@ -141,14 +138,8 @@ private:
     bool m_loading_model_rt = false;
 };
 
-// return hash map instead of vector?
 std::vector<RayTracingModel *> ResourcesController::rtmodels() {
-    std::vector<RayTracingModel *> result;
-    result.reserve(m_rtmodels.size());
-    for (auto &[name, model]: m_rtmodels) {
-        result.push_back(model.get());
-    }
-    return result;
+    return m_rtmodels_ptrs;
 }
 
 ResourcesController::ModelLoadParams ResourcesController::resolve_model_params(const std::string &name) {
@@ -185,6 +176,7 @@ RayTracingModel *ResourcesController::rtmodel(const std::string &name) {
         AssimpSceneProcessor scene_processor(this, scene, params.path);
         RawGeometry rw = scene_processor.process_raw_geometry();
         result = std::make_unique<RayTracingModel>(RayTracingModel(std::move(name), std::move(params.path), std::move(rw.vertices), std::move(rw.indices)));
+        m_rtmodels_ptrs.push_back(result.get());
     }
     return result.get();
 }
@@ -337,5 +329,4 @@ TextureType AssimpSceneProcessor::assimp_texture_type_to_engine(aiTextureType ty
         default: RG_SHOULD_NOT_REACH_HERE("Engine currently doesn't support the aiTextureType: {}", static_cast<int>(type));
     }
 }
-
 }// namespace engine::resources
