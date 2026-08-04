@@ -5,6 +5,7 @@
 #include <assimp/mesh.h>
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
+#include <cstddef>
 #include <cstdint>
 #include <engine/graphics/OpenGL.hpp>
 #include <engine/resources/ResourcesController.hpp>
@@ -21,7 +22,6 @@ namespace engine::resources {
 void ResourcesController::initialize() {
     load_shaders();
     load_models();
-    load_rtmodels();
     load_textures();
     load_skyboxes();
 }
@@ -39,6 +39,9 @@ void ResourcesController::terminate() {
     for (auto &[name, resource]: m_sky_boxes) {
         resource->destroy();
     }
+    // for (auto &[name, resource]: m_rtmodels) {
+    //     resource->destroy();
+    // }
 }
 
 void ResourcesController::load_shaders() {
@@ -65,32 +68,16 @@ void ResourcesController::load_models() {
 
     if (config["resources"].value<bool>("build_bvh_on_load", false)) {
         spdlog::info("No models will be loaded in a classic raster way, build_bvh_on_load is set to true");
-        return;
-    }
-
-    for (const auto &model_entry: config["resources"]["models"].items()) {
-        model(model_entry.key());
+        for (const auto &model_entry: config["resources"]["models"].items()) {
+            rtmodel(model_entry.key());
+        }
+    } else {
+        spdlog::info("No raw geometry will be loaded for model, build_bvh_on_load is set to false");
+        for (const auto &model_entry: config["resources"]["models"].items()) {
+            model(model_entry.key());
+        }
     }
 }
-
-void ResourcesController::load_rtmodels() {
-    if (!exists(m_models_path)) {
-        spdlog::info("[ResourcesController]: no {} found to load the models from", m_models_path.string());
-        return;
-    }
-    const auto &config = util::Configuration::config();
-    if (!config.contains("resources") || !config["resources"].contains("models")) {
-        std::string msg = "No configuration for models in the config.json, please provide the resources config. See the example in the README.md";
-        throw util::EngineError(util::EngineError::Type::ConfigurationError, msg);
-    }
-    if (!config["resources"].value<bool>("build_bvh_on_load", false)) {
-        spdlog::info("No raw geometry will be loaded for model, build_bvh_on_load is set to false");
-        return;
-    }
-    for (const auto &model_entry: config["resources"]["models"].items()) {
-        rtmodel(model_entry.key());
-    }
-};
 
 void ResourcesController::load_textures() {
     if (!exists(m_textures_path)) {
@@ -122,8 +109,10 @@ public:
      * @brief Processes the meshes in the scene.
      * @returns The meshes in the scene.
      */
+
+
     std::vector<Mesh> process_meshes();
-    RawGeometry process_raw_geometry();
+    ResourcesController::RawGeometry process_raw_geometry();
 
     explicit AssimpSceneProcessor(ResourcesController *resources_controller, const aiScene *scene, std::filesystem::path model_path)
         : m_scene(scene)
@@ -135,8 +124,8 @@ private:
     void process_node(const aiNode *node);
     void process_mesh(aiMesh *mesh);
 
-    void process_node_raw(const aiNode *node, std::vector<Vertex> &vertices, std::vector<uint32_t> &indices);
-    void process_mesh_raw(aiMesh *mesh, std::vector<Vertex> &vertices, std::vector<uint32_t> &indices);
+    std::vector<uint32_t> extract_indices(const aiMesh *mesh);
+    Vertex extract_vertex(const aiMesh *mesh, unsigned int i);
 
     std::vector<Texture *> process_materials(const aiMaterial *material);
 
@@ -145,42 +134,14 @@ private:
     static TextureType assimp_texture_type_to_engine(aiTextureType type);
 
     std::vector<Mesh> m_meshes;
-    std::vector<RawGeometry> m_rwg;
+    ResourcesController::RawGeometry m_rwg;
     const aiScene *m_scene;
     std::filesystem::path m_model_path;
     ResourcesController *m_resources_controller;
+    bool m_loading_model_rt = false;
 };
 
-RayTracingModel *ResourcesController::rtmodel(const std::string &name) {
-    auto &result = m_rtmodels[name];
-    if (!result) {
-        auto &config = util::Configuration::config();
-        if (!config["resources"]["models"].contains(name)) {
-            std::string msg = std::format("No model ({}) specify in config.json. Please add the model to the config.json.", name);
-            throw util::EngineError(util::EngineError::Type::ConfigurationError, msg);
-        }
-
-        std::filesystem::path model_path = m_models_path / std::filesystem::path(config["resources"]["models"][name]["path"].get<std::string>());
-        Assimp::Importer importer;
-        int flags = aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_CalcTangentSpace;
-        if (config["resources"]["models"][name].value<bool>("flip_uvs", false)) {
-            flags |= aiProcess_FlipUVs;
-        }
-
-        spdlog::info("load_model(name={}, path={})", name, model_path.string());
-        const aiScene *scene = importer.ReadFile(model_path, flags);
-        if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
-            std::string msg = std::format("Assimp error while reading model: {} from path {}.", model_path.string(), name);
-            throw util::EngineError(util::EngineError::Type::AssetLoadingError, msg);
-        }
-        AssimpSceneProcessor scene_processor(this, scene, model_path);
-        RawGeometry rw = scene_processor.process_raw_geometry();
-        result = std::make_unique<RayTracingModel>(RayTracingModel(std::move(name), std::move(model_path), std::move(rw.vertices()), std::move(rw.indices())));
-    }
-    return result.get();
-}
-
-
+// return hash map instead of vector?
 std::vector<RayTracingModel *> ResourcesController::rtmodels() {
     std::vector<RayTracingModel *> result;
     result.reserve(m_rtmodels.size());
@@ -190,32 +151,53 @@ std::vector<RayTracingModel *> ResourcesController::rtmodels() {
     return result;
 }
 
+ResourcesController::ModelLoadParams ResourcesController::resolve_model_params(const std::string &name) {
+    auto &config = util::Configuration::config();
+    if (!config["resources"]["models"].contains(name)) {
+        std::string msg = std::format("No model ({}) specify in config.json. Please add the model to the config.json.", name);
+        throw util::EngineError(util::EngineError::Type::ConfigurationError, msg);
+    }
+
+    std::filesystem::path model_path = m_models_path / std::filesystem::path(config["resources"]["models"][name]["path"].get<std::string>());
+    int flags = aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_CalcTangentSpace;
+    if (config["resources"]["models"][name].value<bool>("flip_uvs", false)) {
+        flags |= aiProcess_FlipUVs;
+    }
+    return {.path = model_path.string(), .assimp_flags = flags};
+}
+
+const aiScene *ResourcesController::read_validate_scene(Assimp::Importer &importer, const std::string &name, const ResourcesController::ModelLoadParams &params) {
+    const aiScene *scene = importer.ReadFile(params.path, params.assimp_flags);
+    spdlog::info("load_model(name={}, path={})", name, params.path);
+    if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
+        std::string msg = std::format("Assimp error while reading model: {} from path {}.", params.path, name);
+        throw util::EngineError(util::EngineError::Type::AssetLoadingError, msg);
+    }
+    return scene;
+}
+
+RayTracingModel *ResourcesController::rtmodel(const std::string &name) {
+    auto &result = m_rtmodels[name];
+    if (!result) {
+        ModelLoadParams params = resolve_model_params(name);
+        Assimp::Importer importer;
+        const aiScene *scene = read_validate_scene(importer, name, params);
+        AssimpSceneProcessor scene_processor(this, scene, params.path);
+        RawGeometry rw = scene_processor.process_raw_geometry();
+        result = std::make_unique<RayTracingModel>(RayTracingModel(std::move(name), std::move(params.path), std::move(rw.vertices), std::move(rw.indices)));
+    }
+    return result.get();
+}
+
 Model *ResourcesController::model(const std::string &name) {
     auto &result = m_models[name];
     if (!result) {
-        auto &config = util::Configuration::config();
-        if (!config["resources"]["models"].contains(name)) {
-            std::string msg = std::format("No model ({}) specify in config.json. Please add the model to the config.json.", name);
-            throw util::EngineError(util::EngineError::Type::ConfigurationError, msg);
-        }
-
-        std::filesystem::path model_path = m_models_path / std::filesystem::path(config["resources"]["models"][name]["path"].get<std::string>());
+        ModelLoadParams params = resolve_model_params(name);
         Assimp::Importer importer;
-        int flags = aiProcess_Triangulate | aiProcess_GenSmoothNormals | aiProcess_CalcTangentSpace;
-        if (config["resources"]["models"][name].value<bool>("flip_uvs", false)) {
-            flags |= aiProcess_FlipUVs;
-        }
-
-        spdlog::info("load_model(name={}, path={})", name, model_path.string());
-        const aiScene *scene = importer.ReadFile(model_path, flags);
-        if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
-            std::string msg = std::format("Assimp error while reading model: {} from path {}.", model_path.string(), name);
-            throw util::EngineError(util::EngineError::Type::AssetLoadingError, msg);
-        }
-
-        AssimpSceneProcessor scene_processor(this, scene, model_path);
+        const aiScene *scene = read_validate_scene(importer, name, params);
+        AssimpSceneProcessor scene_processor(this, scene, params.path);
         std::vector<Mesh> meshes = scene_processor.process_meshes();
-        result = std::make_unique<Model>(Model(std::move(meshes), model_path, name));
+        result = std::make_unique<Model>(Model(std::move(meshes), params.path, name));
     }
     return result.get();
 }
@@ -250,58 +232,12 @@ Shader *ResourcesController::shader(const std::string &name, const std::filesyst
     return result.get();
 }
 
-RawGeometry AssimpSceneProcessor::process_raw_geometry() {
-    std::vector<Vertex> vertices;
-    std::vector<uint32_t> indices;
-    process_node_raw(m_scene->mRootNode, vertices, indices);
-    return RawGeometry(std::move(vertices), std::move(indices));
-}
-
-void AssimpSceneProcessor::process_node_raw(const aiNode *node, std::vector<Vertex> &vertices, std::vector<uint32_t> &indices) {
-    for (uint32_t i = 0; i < node->mNumMeshes; ++i) {
-        auto mesh = m_scene->mMeshes[node->mMeshes[i]];
-        process_mesh_raw(mesh, vertices, indices);
-    }
-    for (uint32_t i = 0; i < node->mNumChildren; ++i) {
-        process_node_raw(node->mChildren[i], vertices, indices);
-    }
-}
-
-void AssimpSceneProcessor::process_mesh_raw(aiMesh *mesh, std::vector<Vertex> &vertices, std::vector<uint32_t> &indices) {
-    for (unsigned int i = 0; i < mesh->mNumVertices; ++i) {
-        Vertex vertex{};
-        vertex.Position.x = mesh->mVertices[i].x;
-        vertex.Position.y = mesh->mVertices[i].y;
-        vertex.Position.z = mesh->mVertices[i].z;
-
-        if (mesh->HasNormals()) {
-            vertex.Normal.x = mesh->mNormals[i].x;
-            vertex.Normal.y = mesh->mNormals[i].y;
-            vertex.Normal.z = mesh->mNormals[i].z;
-        }
-
-        if (mesh->mTextureCoords[0]) {
-            vertex.TexCoords.x = mesh->mTextureCoords[0][i].x;
-            vertex.TexCoords.y = mesh->mTextureCoords[0][i].y;
-
-            vertex.Tangent.x = mesh->mTangents[i].x;
-            vertex.Tangent.y = mesh->mTangents[i].y;
-            vertex.Tangent.z = mesh->mTangents[i].z;
-
-            vertex.Bitangent.x = mesh->mBitangents[i].x;
-            vertex.Bitangent.y = mesh->mBitangents[i].y;
-            vertex.Bitangent.z = mesh->mBitangents[i].z;
-        }
-        vertices.push_back(vertex);
-    }
-
-    for (uint32_t i = 0; i < mesh->mNumFaces; ++i) {
-        aiFace face = mesh->mFaces[i];
-
-        for (uint32_t j = 0; j < face.mNumIndices; ++j) {
-            indices.push_back(face.mIndices[j]);
-        }
-    }
+ResourcesController::RawGeometry AssimpSceneProcessor::process_raw_geometry() {
+    m_rwg.indices.clear();
+    m_rwg.vertices.clear();
+    m_loading_model_rt = true;
+    process_node(m_scene->mRootNode);
+    return std::move(m_rwg);
 }
 
 std::vector<Mesh> AssimpSceneProcessor::process_meshes() {
@@ -309,7 +245,6 @@ std::vector<Mesh> AssimpSceneProcessor::process_meshes() {
     process_node(m_scene->mRootNode);
     return std::move(m_meshes);
 }
-
 
 void AssimpSceneProcessor::process_node(const aiNode *node) {
     for (uint32_t i = 0; i < node->mNumMeshes; ++i) {
@@ -325,44 +260,46 @@ void AssimpSceneProcessor::process_mesh(aiMesh *mesh) {
     std::vector<Vertex> vertices;
     vertices.reserve(mesh->mNumVertices);
     for (unsigned int i = 0; i < mesh->mNumVertices; ++i) {
-        Vertex vertex{};
-        vertex.Position.x = mesh->mVertices[i].x;
-        vertex.Position.y = mesh->mVertices[i].y;
-        vertex.Position.z = mesh->mVertices[i].z;
-
-        if (mesh->HasNormals()) {
-            vertex.Normal.x = mesh->mNormals[i].x;
-            vertex.Normal.y = mesh->mNormals[i].y;
-            vertex.Normal.z = mesh->mNormals[i].z;
-        }
-
-        if (mesh->mTextureCoords[0]) {
-            vertex.TexCoords.x = mesh->mTextureCoords[0][i].x;
-            vertex.TexCoords.y = mesh->mTextureCoords[0][i].y;
-
-            vertex.Tangent.x = mesh->mTangents[i].x;
-            vertex.Tangent.y = mesh->mTangents[i].y;
-            vertex.Tangent.z = mesh->mTangents[i].z;
-
-            vertex.Bitangent.x = mesh->mBitangents[i].x;
-            vertex.Bitangent.y = mesh->mBitangents[i].y;
-            vertex.Bitangent.z = mesh->mBitangents[i].z;
-        }
-        vertices.push_back(vertex);
+        vertices.push_back(extract_vertex(mesh, i));
     }
 
+    std::vector<uint32_t> indices = extract_indices(mesh);
+
+    auto material = m_scene->mMaterials[mesh->mMaterialIndex];
+    std::vector<Texture *> textures = process_materials(material);
+    m_rwg.vertices.insert(m_rwg.vertices.end(), vertices.begin(), vertices.end());
+    m_rwg.indices.insert(m_rwg.indices.end(), indices.begin(), indices.end());
+    if (!m_loading_model_rt) {
+        m_meshes.emplace_back(Mesh(vertices, indices, std::move(textures)));
+    }
+}
+
+Vertex AssimpSceneProcessor::extract_vertex(const aiMesh *mesh, unsigned int i) {
+    Vertex vertex{};
+    if (mesh->HasPositions()) {
+        vertex.Position = {mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z};
+    }
+    if (mesh->HasNormals()) {
+        vertex.Normal = {mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z};
+    }
+    if (mesh->mTextureCoords[0]) {
+        vertex.TexCoords = {mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y};
+        vertex.Tangent = {mesh->mTangents[i].x, mesh->mTangents[i].y, mesh->mTangents[i].z};
+        vertex.Bitangent = {mesh->mBitangents[i].x, mesh->mBitangents[i].y, mesh->mBitangents[i].z};
+    }
+    return vertex;
+}
+
+std::vector<uint32_t> AssimpSceneProcessor::extract_indices(const aiMesh *mesh) {
     std::vector<uint32_t> indices;
+    indices.reserve(static_cast<size_t>(mesh->mNumFaces) * 3);
     for (uint32_t i = 0; i < mesh->mNumFaces; ++i) {
         aiFace face = mesh->mFaces[i];
-
         for (uint32_t j = 0; j < face.mNumIndices; ++j) {
             indices.push_back(face.mIndices[j]);
         }
     }
-
-    auto material = m_scene->mMaterials[mesh->mMaterialIndex];
-    std::vector<Texture *> textures = process_materials(material);
-    m_meshes.emplace_back(Mesh(vertices, indices, std::move(textures)));
+    return indices;
 }
 
 std::vector<Texture *> AssimpSceneProcessor::process_materials(const aiMaterial *material) {

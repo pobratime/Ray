@@ -7,6 +7,7 @@
 #define MATF_RG_PROJECT_RESOURCES_CONTROLLER_HPP
 
 #include "engine/resources/RayTracingModel.hpp"
+#include <assimp/Importer.hpp>
 #include <engine/core/Controller.hpp>
 #include <engine/resources/Model.hpp>
 #include <engine/resources/Shader.hpp>
@@ -24,10 +25,16 @@ namespace engine::resources {
 */
 class ResourcesController final : public core::Controller {
 public:
+    struct RawGeometry {
+        std::vector<Vertex> vertices;
+        std::vector<uint32_t> indices;
+    };
+
     std::string_view name() const override {
         return "ResourcesController";
     }
 
+    // TODO
     std::vector<RayTracingModel *> rtmodels();
 
     RayTracingModel *rtmodel(const std::string &name);
@@ -78,6 +85,13 @@ public:
     Shader *shader(const std::string &name, const std::filesystem::path &path = "");
 
 private:
+    struct ModelLoadParams {
+        std::string path;
+        int assimp_flags;
+    };
+
+    ModelLoadParams resolve_model_params(const std::string &name);
+    const aiScene *read_validate_scene(Assimp::Importer &importer, const std::string &name, const ModelLoadParams &params);
     /**
     * @brief Loads all the resources from the "resources/" directory.
     */
@@ -107,8 +121,6 @@ private:
     * @brief Loads and compile all the shaders from the "resources/shaders" directory. Called during @ref ResourcesController::initialize.
     */
     void load_shaders();
-
-    void load_rtmodels();
 
     /**
     * @brief A hashmap of all the loaded @ref Model.
