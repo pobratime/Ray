@@ -36,9 +36,6 @@ void ResourcesController::terminate() {
     for (auto &[name, resource]: m_sky_boxes) {
         resource->destroy();
     }
-    // for (auto &[name, resource]: m_rtmodels) {
-    //     resource->destroy();
-    // }
 }
 
 void ResourcesController::load_shaders() {

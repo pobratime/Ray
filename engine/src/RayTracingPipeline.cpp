@@ -20,13 +20,13 @@ void RayTracingPipeline::initialize() {
 }
 
 void RayTracingPipeline::render() {
-    upload_and_bind_tlas();
+    update_tlas();
     CHECKED_GL_CALL(glBindVertexArray, m_quad_vao);
     CHECKED_GL_CALL(glDrawArrays, GL_TRIANGLES, 0, 6);
     CHECKED_GL_CALL(glBindVertexArray, 0);
 }
 
-void RayTracingPipeline::upload_and_bind_tlas() {
+void RayTracingPipeline::update_tlas() {
     const auto res_con = engine::core::Controller::get<resources::ResourcesController>();
     const std::vector<resources::RayTracingModel *> rtmodels = res_con->rtmodels();
     std::vector<resources::RayTracingModel *> active_rtmodels{};
@@ -35,14 +35,34 @@ void RayTracingPipeline::upload_and_bind_tlas() {
             active_rtmodels.push_back(r);
         }
     }
+    const util::ds::TlasTree tlas_tree{active_rtmodels};
+    const std::vector<util::ds::TlasTree::TlasNode> &nodes = tlas_tree.nodes();
+    const std::vector<util::ds::TlasTree::GPUInstance> &instances = tlas_tree.instances();
 
-    if (active_rtmodels.empty()) {
+    if (nodes.size() > m_last_tlas_size || instances.size() > m_last_instances_size) {
+        upload_and_bind_tlas(tlas_tree);
         return;
     }
 
-    const util::ds::TlasTree tlas_tree(active_rtmodels);
+    CHECKED_GL_CALL(glNamedBufferSubData,
+                    m_tlas_ssbo,
+                    0,
+                    sizeof(util::ds::TlasTree::TlasNode) * nodes.size(),
+                    nodes.data());
+
+    CHECKED_GL_CALL(glNamedBufferSubData,
+                    m_instances_ssbo,
+                    0,
+                    sizeof(util::ds::TlasTree::GPUInstance) * instances.size(),
+                    instances.data());
+}
+
+void RayTracingPipeline::upload_and_bind_tlas(const util::ds::TlasTree &tlas_tree) {
     const std::vector<util::ds::TlasTree::TlasNode> &nodes = tlas_tree.nodes();
     const std::vector<util::ds::TlasTree::GPUInstance> &instances = tlas_tree.instances();
+
+    m_last_tlas_size = nodes.size();
+    m_last_instances_size = instances.size();
 
     if (m_tlas_ssbo) {
         CHECKED_GL_CALL(glDeleteBuffers, 1, &m_tlas_ssbo);
@@ -53,7 +73,6 @@ void RayTracingPipeline::upload_and_bind_tlas() {
                     sizeof(util::ds::TlasTree::TlasNode) * nodes.size(),
                     static_cast<const void *>(nodes.data()),
                     GL_DYNAMIC_STORAGE_BIT);
-
     CHECKED_GL_CALL(glBindBufferBase, GL_SHADER_STORAGE_BUFFER, TLAS_BINDING, m_tlas_ssbo);
 
     if (m_instances_ssbo) {
@@ -65,7 +84,6 @@ void RayTracingPipeline::upload_and_bind_tlas() {
                     sizeof(util::ds::TlasTree::GPUInstance) * instances.size(),
                     static_cast<const void *>(instances.data()),
                     GL_DYNAMIC_STORAGE_BIT);
-
     CHECKED_GL_CALL(glBindBufferBase, GL_SHADER_STORAGE_BUFFER, INSTANCE_BINDIING, m_instances_ssbo);
 }
 
