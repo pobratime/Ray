@@ -37,7 +37,7 @@ void RayTracingPipeline::upload_and_bind_tlas() {
     }
     util::ds::TlasTree tlas_tree(active_rtmodels);
     std::vector<util::ds::TlasTree::TlasNode> nodes = tlas_tree.nodes();
-    std::vector<util::ds::TlasTree::GPUInstance> instances = tlas_tree.instances();
+    const std::vector<util::ds::TlasTree::GPUInstance> &instances = tlas_tree.instances();
 
     if (m_tlas_ssbo) {
         CHECKED_GL_CALL(glDeleteBuffers, 1, &m_tlas_ssbo);
@@ -46,7 +46,7 @@ void RayTracingPipeline::upload_and_bind_tlas() {
     CHECKED_GL_CALL(glNamedBufferStorage,
                     m_tlas_ssbo,
                     sizeof(util::ds::TlasTree::TlasNode) * nodes.size(),
-                    (const void *) nodes.data(),
+                    static_cast<const void *>(nodes.data()),
                     GL_DYNAMIC_STORAGE_BIT);
 
     CHECKED_GL_CALL(glBindBufferBase, GL_SHADER_STORAGE_BUFFER, 2, m_tlas_ssbo);
@@ -58,7 +58,7 @@ void RayTracingPipeline::upload_and_bind_tlas() {
     CHECKED_GL_CALL(glNamedBufferStorage,
                     m_instances_ssbo,
                     sizeof(util::ds::TlasTree::GPUInstance) * instances.size(),
-                    (const void *) instances.data(),
+                    static_cast<const void *>(instances.data()),
                     GL_DYNAMIC_STORAGE_BIT);
 
     CHECKED_GL_CALL(glBindBufferBase, GL_SHADER_STORAGE_BUFFER, 3, m_instances_ssbo);
@@ -70,6 +70,7 @@ void RayTracingPipeline::upload_global_data() {
     std::vector<resources::RayTracingModel *> rtmodels = res_con->rtmodels();
 
     std::vector<std::future<void>> futures{};
+    futures.reserve(rtmodels.size());
     util::parallel::ThreadPool pool;
     for (auto &r: rtmodels) {
         futures.push_back(pool.enqueue([r] {
@@ -108,7 +109,7 @@ void RayTracingPipeline::upload_global_data() {
     CHECKED_GL_CALL(glNamedBufferStorage,
                     m_global_blas_ssbo,
                     sizeof(util::ds::BlasTree::BlasNode) * nodes.size(),
-                    (const void *) nodes.data(),
+                    static_cast<const void *>(nodes.data()),
                     GL_DYNAMIC_STORAGE_BIT);
     CHECKED_GL_CALL(glBindBufferBase, GL_SHADER_STORAGE_BUFFER, 0, m_global_blas_ssbo);
 
@@ -116,7 +117,7 @@ void RayTracingPipeline::upload_global_data() {
     CHECKED_GL_CALL(glNamedBufferStorage,
                     m_global_primitives_ssbo,
                     sizeof(util::ds::BlasTree::GPUPrimitive) * primitives.size(),
-                    (const void *) primitives.data(),
+                    static_cast<const void *>(primitives.data()),
                     GL_DYNAMIC_STORAGE_BIT);
     CHECKED_GL_CALL(glBindBufferBase, GL_SHADER_STORAGE_BUFFER, 1, m_global_primitives_ssbo);
 }
@@ -158,7 +159,7 @@ void RayTracingPipeline::setup_screen_quad() {
     CHECKED_GL_CALL(glBufferData, GL_ARRAY_BUFFER, sizeof(quad_vertices), quad_vertices, GL_STATIC_DRAW);
 
     CHECKED_GL_CALL(glEnableVertexAttribArray, 0);
-    CHECKED_GL_CALL(glVertexAttribPointer, 0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *) 0);
+    CHECKED_GL_CALL(glVertexAttribPointer, 0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), static_cast<const void *>(nullptr));
 
     CHECKED_GL_CALL(glEnableVertexAttribArray, 1);
     CHECKED_GL_CALL(glVertexAttribPointer, 1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *) (2 * sizeof(float)));

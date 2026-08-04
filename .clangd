@@ -1,2 +1,35 @@
 CompileFlags:
   CompilationDatabase: "build"
+  Add:
+    # Essential warning flags for modern C++
+    - "-Wall"
+    - "-Wextra"
+    - "-Wshadow"
+    - "-Wnon-virtual-dtor"
+    - "-Wold-style-cast"
+
+Diagnostics:
+  # Fixes false-positive libstdc++ consteval / std::format issues in Clang
+  Suppress:
+    - "drv_unknown_argument"
+
+  ClangTidy:
+    Add:
+      - "performance-*"        # Identifies unnecessary copies & allocations
+      - "bugprone-*"           # Catches logic bugs, dangling references, UB
+      - "modernize-*"          # Highlights modern C++ idiom improvements
+    Remove:
+      # Exclude overly aggressive/pedantic checks that cause red noise
+      - "bugprone-easily-swappable-parameters"
+      - "modernize-use-trailing-return-type"
+      - "modernize-use-auto"
+      - "modernize-avoid-c-arrays"
+      - "readability-*"        # Keeps style/formatting checks out of diagnostics
+
+# Enables full context hints directly in the editor buffer
+InlayHints:
+  Enabled: true
+  ParameterNames: true       # Shows argument labels in function calls
+  DeducedTypes: true         # Displays actual types for 'auto'
+  Designators: true          # Shows field names in aggregate initializers
+  TypeNameLimit: 24          # Keeps long template type hints concise
