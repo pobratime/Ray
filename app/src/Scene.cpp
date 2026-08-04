@@ -3,9 +3,7 @@
 #include "engine/graphics/GraphicsController.hpp"
 #include "engine/platform/PlatformController.hpp"
 #include "engine/resources/ResourcesController.hpp"
-#include "glm/ext/vector_float3.hpp"
 #include "glm/trigonometric.hpp"
-#include <cmath>
 
 namespace engine::main::app {
 void Scene::initialize() {
@@ -22,7 +20,6 @@ void Scene::initialize() {
 }
 
 void Scene::render() {
-    const auto cont = engine::core::Controller::get<platform::PlatformController>();
     const auto camera = engine::core::Controller::get<graphics::GraphicsController>()->camera();
     const auto window = engine::core::Controller::get<platform::PlatformController>()->window();
     m_shader->use();

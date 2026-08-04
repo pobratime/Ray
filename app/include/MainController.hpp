@@ -2,6 +2,7 @@
 
 #include "Scene.hpp"
 #include "engine/core/Controller.hpp"
+
 namespace engine::main::app {
 class MainController final : public core::Controller {
 public:

@@ -1,7 +1,6 @@
 #include "engine/util/BlasTree.hpp"
 #include "engine/resources/Mesh.hpp"
 #include "glm/common.hpp"
-#include "glm/ext/vector_float3.hpp"
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
@@ -59,8 +58,7 @@ std::vector<BlasTree::CPUPrimitive> BlasTree::transform_to_cpu(const std::vector
 std::vector<BlasTree::GPUPrimitive> BlasTree::transform_to_gpu(std::vector<CPUPrimitive> &primitives) {
     std::vector<GPUPrimitive> g_primitives{};
     g_primitives.reserve(primitives.size());
-    for (size_t i = 0; i < primitives.size(); i++) {
-        CPUPrimitive prim = primitives[i];
+    for (auto prim : primitives) {
         GPUPrimitive gpu{};
         gpu.v0 = glm::vec4(prim.v0, 1.0f);
         gpu.v1 = glm::vec4(prim.v1, 1.0f);
