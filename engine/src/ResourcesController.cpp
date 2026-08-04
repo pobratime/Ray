@@ -135,7 +135,7 @@ private:
     bool m_loading_model_rt = false;
 };
 
-std::vector<RayTracingModel *> ResourcesController::rtmodels() {
+const std::vector<RayTracingModel *> &ResourcesController::rtmodels() const {
     return m_rtmodels_ptrs;
 }
 

@@ -34,7 +34,7 @@ public:
         return "ResourcesController";
     }
 
-    std::vector<RayTracingModel *> rtmodels();
+    const std::vector<RayTracingModel *> &rtmodels() const;
 
     RayTracingModel *rtmodel(const std::string &name);
 

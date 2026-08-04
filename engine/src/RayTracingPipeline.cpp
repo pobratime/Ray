@@ -7,6 +7,7 @@
 #include "engine/resources/RayTracingModel.hpp"
 #include "engine/resources/ResourcesController.hpp"
 #include "engine/util/BlasTree.hpp"
+#include "engine/util/Errors.hpp"
 #include "engine/util/ThreadPool.hpp"
 #include "engine/util/TlasTree.hpp"
 #include <cstdint>
@@ -35,9 +36,16 @@ void RayTracingPipeline::update_tlas() {
             active_rtmodels.push_back(r);
         }
     }
+
     const util::ds::TlasTree tlas_tree{active_rtmodels};
     const std::vector<util::ds::TlasTree::TlasNode> &nodes = tlas_tree.nodes();
     const std::vector<util::ds::TlasTree::GPUInstance> &instances = tlas_tree.instances();
+
+    RG_GUARANTEE(!active_rtmodels.empty(), "No models to ray-trace. Please activate by using [model]->activate().");
+    RG_GUARANTEE(!nodes.empty(), "Tlas tree empty.");
+    RG_GUARANTEE(!instances.empty(), "GPUInstances for Tlas tree empty.");
+    RG_GUARANTEE((sizeof(util::ds::TlasTree::TlasNode) % 16 == 0), "Bad SSBO element alignment for TlasTree::TlasNode.");
+    RG_GUARANTEE((sizeof(util::ds::TlasTree::GPUInstance) % 16 == 0), "Bad SSBO element alignment for TlasTree::GPUInstance.");
 
     if (nodes.size() > m_last_tlas_size || instances.size() > m_last_instances_size) {
         upload_and_bind_tlas(tlas_tree);
@@ -89,8 +97,7 @@ void RayTracingPipeline::upload_and_bind_tlas(const util::ds::TlasTree &tlas_tre
 
 void RayTracingPipeline::upload_global_data() {
     const auto res_con = engine::core::Controller::get<resources::ResourcesController>();
-
-    std::vector<resources::RayTracingModel *> rtmodels = res_con->rtmodels();
+    const std::vector<resources::RayTracingModel *> &rtmodels = res_con->rtmodels();
 
     std::vector<std::future<void>> futures{};
     futures.reserve(rtmodels.size());
@@ -103,6 +110,7 @@ void RayTracingPipeline::upload_global_data() {
     for (auto &f: futures) {
         f.get();
     }
+
 
     std::vector<util::ds::BlasTree::BlasNode> nodes{};
     uint32_t node_offset = 0;
@@ -127,6 +135,11 @@ void RayTracingPipeline::upload_global_data() {
         node_offset += static_cast<uint32_t>(blas_nodes.size());
         primitive_offset += static_cast<uint32_t>(r->m_blas.primitives().size());
     }
+
+    RG_GUARANTEE(!nodes.empty(), "Global Blas tree empty");
+    RG_GUARANTEE(!primitives.empty(), "Global Primitives for Blas tree empty.");
+    RG_GUARANTEE((sizeof(util::ds::BlasTree::BlasNode) % 16 == 0), "Bad SSBO element alignment for BlasTree::BlasNode.");
+    RG_GUARANTEE((sizeof(util::ds::BlasTree::GPUPrimitive) % 16 == 0), "Bad SSBO element alignment for BlasTree::GPUPrimitive.");
 
     CHECKED_GL_CALL(glCreateBuffers, 1, &m_global_blas_ssbo);
     CHECKED_GL_CALL(glNamedBufferStorage,
