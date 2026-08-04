@@ -15,6 +15,7 @@ public:
 
 private:
     void setup_screen_quad();
+    float m_dt_acc = 0.0f;
     resources::RayTracingModel *m_bunny{};
     resources::RayTracingModel *m_teapot{};
     resources::Shader *m_shader{};

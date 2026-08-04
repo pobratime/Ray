@@ -4,6 +4,8 @@
 #include "engine/platform/PlatformController.hpp"
 #include "engine/resources/ResourcesController.hpp"
 #include "glm/ext/vector_float3.hpp"
+#include "glm/trigonometric.hpp"
+#include <cmath>
 
 namespace engine::main::app {
 void Scene::initialize() {
@@ -11,16 +13,18 @@ void Scene::initialize() {
     m_pipeline.initialize();
     m_bunny = res_con->rtmodel("stanford_bunny");
     m_teapot = res_con->rtmodel("utah_teapot");
-    m_teapot->position_model(glm::vec3{-10, 0, 10});
     m_shader = res_con->shader("ray");
     m_bunny->activate();
+    m_bunny->scale_model(glm::vec3(20.0f));
     m_teapot->activate();
+    m_teapot->position_model(glm::vec3(-5, 0, 0));
+    m_bunny->position_model(glm::vec3(5, 0, 0));
 }
 
 void Scene::render() {
+    const auto cont = engine::core::Controller::get<platform::PlatformController>();
     const auto camera = engine::core::Controller::get<graphics::GraphicsController>()->camera();
     const auto window = engine::core::Controller::get<platform::PlatformController>()->window();
-
     m_shader->use();
     m_pipeline.render();
     m_shader->set_vec3("u_camera_position", camera->Position);

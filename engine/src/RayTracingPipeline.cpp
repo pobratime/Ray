@@ -1,5 +1,4 @@
 // clang-format off
-#include <cstdint>
 #include <glad/glad.h>
 // clang-format on
 #include "engine/graphics/RayTracingPipeline.hpp"
@@ -10,6 +9,7 @@
 #include "engine/util/BlasTree.hpp"
 #include "engine/util/ThreadPool.hpp"
 #include "engine/util/TlasTree.hpp"
+#include <cstdint>
 #include <future>
 #include <vector>
 
