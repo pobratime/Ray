@@ -6,7 +6,6 @@
 #ifndef APP_H
 #define APP_H
 
-#include "engine/util/ThreadPool.hpp"
 namespace engine::util {
 class Error;
 }

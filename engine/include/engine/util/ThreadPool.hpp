@@ -13,33 +13,16 @@
 namespace engine::util::parallel {
 class ThreadPool {
 public:
+    static ThreadPool &instance() {
+        static ThreadPool pool;
+        return pool;
+    }
+
     ThreadPool(const ThreadPool &) = delete;
     ThreadPool &operator=(const ThreadPool &) = delete;
 
     ThreadPool(ThreadPool &&) = delete;
     ThreadPool &operator=(ThreadPool &&) = delete;
-
-    explicit ThreadPool(size_t n_threads = std::thread::hardware_concurrency() - 1) {
-        if (n_threads == 0) {
-            n_threads = 1;
-        }
-        m_threads.reserve(n_threads);
-        for (size_t i = 0; i < n_threads; i++) {
-            m_threads.emplace_back([this] {
-                for (;;) {
-                    std::unique_lock<std::mutex> lock(this->m_mutex);
-                    this->m_condition.wait(lock, [this] { return !this->m_tasks.empty() || this->m_stop; });
-                    if (this->m_tasks.empty() && this->m_stop) {
-                        return;
-                    }
-                    auto task = std::move(this->m_tasks.front());
-                    this->m_tasks.pop();
-                    lock.unlock();
-                    task();
-                }
-            });
-        }
-    }
 
     ~ThreadPool() {
         {
@@ -72,7 +55,33 @@ public:
     }
 
 private:
-    std::vector<std::thread> m_threads{};
+    // private constructor to ensure no new threads are made
+    explicit ThreadPool(size_t n_threads = std::thread::hardware_concurrency()) {
+        if (n_threads == 0) {
+            n_threads = 1;
+        }
+        if (n_threads > 1) {
+            n_threads -= 1;
+        }
+        m_threads.reserve(n_threads);
+        for (size_t i = 0; i < n_threads; i++) {
+            m_threads.emplace_back([this] {
+                for (;;) {
+                    std::unique_lock<std::mutex> lock(this->m_mutex);
+                    this->m_condition.wait(lock, [this] { return !this->m_tasks.empty() || this->m_stop; });
+                    if (this->m_tasks.empty() && this->m_stop) {
+                        return;
+                    }
+                    auto task = std::move(this->m_tasks.front());
+                    this->m_tasks.pop();
+                    lock.unlock();
+                    task();
+                }
+            });
+        }
+    }
+    std::vector<std::thread>
+            m_threads{};
     std::queue<std::function<void()>> m_tasks{};
     std::mutex m_mutex{};
     std::condition_variable m_condition{};

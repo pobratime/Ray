@@ -101,7 +101,7 @@ void RayTracingPipeline::upload_global_data() {
 
     std::vector<std::future<void>> futures{};
     futures.reserve(rtmodels.size());
-    util::parallel::ThreadPool pool;
+    util::parallel::ThreadPool &pool = util::parallel::ThreadPool::instance();
     for (auto &r: rtmodels) {
         futures.push_back(pool.enqueue([r] {
             r->build_bvh();
@@ -110,7 +110,6 @@ void RayTracingPipeline::upload_global_data() {
     for (auto &f: futures) {
         f.get();
     }
-
 
     std::vector<util::ds::BlasTree::BlasNode> nodes{};
     uint32_t node_offset = 0;

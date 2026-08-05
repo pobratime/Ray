@@ -32,7 +32,7 @@ public:
 
     uint32_t m_blas_root_offset = 0;
 
-    void position_model(const glm::vec3 &pos) {
+    void translate_model(const glm::vec3 &pos) {
         m_position = pos;
     }
 

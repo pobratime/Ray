@@ -15,8 +15,8 @@ void Scene::initialize() {
     m_bunny->activate();
     m_bunny->scale_model(glm::vec3(20.0f));
     m_teapot->activate();
-    m_teapot->position_model(glm::vec3(-5, 0, 0));
-    m_bunny->position_model(glm::vec3(5, 0, 0));
+    m_teapot->translate_model(glm::vec3(-5, 0, 0));
+    m_bunny->translate_model(glm::vec3(5, 0, 0));
 }
 
 void Scene::render() {
