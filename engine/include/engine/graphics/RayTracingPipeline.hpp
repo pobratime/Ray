@@ -9,6 +9,7 @@ class RayTracingPipeline {
 public:
     void initialize();
     void render();
+    void destroy();
 
 private:
     uint32_t m_global_primitives_ssbo = 0;

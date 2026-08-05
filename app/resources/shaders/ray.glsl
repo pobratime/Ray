@@ -313,6 +313,7 @@ void main() {
         vec3 light_dir = normalize(vec3(0.5, 1.0, 0.3));
         float diffuse  = max(dot(world_normal, light_dir), 0.15);
 
+        // poraditi na ovome
         FragColor = vec4(normal_color * diffuse, 1.0);
     } else {
         FragColor = vec4(0.08, 0.08, 0.12, 1.0);

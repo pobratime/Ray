@@ -21,6 +21,8 @@ void RayTracingPipeline::initialize() {
 }
 
 void RayTracingPipeline::render() {
+    // const auto res_con = engine::core::Controller::get<resources::ResourcesController>();
+    // const auto ray_shader = res_con->shader("ray");
     update_tlas();
     CHECKED_GL_CALL(glBindVertexArray, m_quad_vao);
     CHECKED_GL_CALL(glDrawArrays, GL_TRIANGLES, 0, 6);
@@ -204,4 +206,20 @@ void RayTracingPipeline::setup_screen_quad() {
 
     CHECKED_GL_CALL(glBindVertexArray, 0);
 }
+
+void RayTracingPipeline::destroy() {
+    if (m_quad_vao != 0) CHECKED_GL_CALL(glDeleteVertexArrays, 1, &m_quad_vao);
+    m_quad_vao = 0;
+    if (m_quad_vbo != 0) CHECKED_GL_CALL(glDeleteBuffers, 1, &m_quad_vbo);
+    m_quad_vbo = 0;
+    if (m_global_primitives_ssbo != 0) CHECKED_GL_CALL(glDeleteBuffers, 1, &m_global_primitives_ssbo);
+    m_global_primitives_ssbo = 0;
+    if (m_global_blas_ssbo != 0) CHECKED_GL_CALL(glDeleteBuffers, 1, &m_global_blas_ssbo);
+    m_global_blas_ssbo = 0;
+    if (m_tlas_ssbo != 0) CHECKED_GL_CALL(glDeleteBuffers, 1, &m_tlas_ssbo);
+    m_tlas_ssbo = 0;
+    if (m_instances_ssbo != 0) CHECKED_GL_CALL(glDeleteBuffers, 1, &m_instances_ssbo);
+    m_instances_ssbo = 0;
+}
+
 }// namespace engine::graphics
