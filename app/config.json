@@ -13,12 +13,16 @@
       "backpack": {
         "path": "backpack/backpack.obj",
         "flip_uvs": false
+      },
+      "chess": {
+        "path": "chess/chess_set_2k.gltf",
+        "flip_uvs": true
       }
     }
   },
   "window": {
-    "height": 1050,
+    "height": 1964,
     "title": "Ray",
-    "width": 1680
+    "width": 3024
   }
 }

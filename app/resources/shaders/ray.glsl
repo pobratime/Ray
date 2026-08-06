@@ -300,9 +300,10 @@ vec3 texture_primitive(GPUPrimitive tri, GPUInstance inst) {
 
     vec2 interpolated_uv = w * tri.uv0.xy + u * tri.uv1.xy + v * tri.uv2.xy;
 
-    vec3 diff_color = (diff_idx != -1) ? texture(u_Textures[diff_idx], interpolated_uv).rgb : vec3(1.0f);
-    vec3 norm_color = (norm_idx != -1) ? texture(u_Textures[norm_idx], interpolated_uv).rgb : vec3(0.5, 0.5, 1.0);
-    float spec_color = (spec_idx != -1) ? texture(u_Textures[spec_idx], interpolated_uv).r : 0.2f;
+    // textureLod bff <3 <3
+    vec3 diff_color = (diff_idx != -1) ? textureLod(u_Textures[diff_idx], interpolated_uv, 0.0).rgb : vec3(1.0f);
+    vec3 norm_color = (norm_idx != -1) ? textureLod(u_Textures[norm_idx], interpolated_uv, 0.0).rgb : vec3(0.5, 0.5, 1.0);
+    float spec_color = (spec_idx != -1) ? textureLod(u_Textures[spec_idx], interpolated_uv, 0.0).r : 0.2f;
 
     return diff_color;
 }
