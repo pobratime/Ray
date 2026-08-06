@@ -12,11 +12,13 @@ void Scene::initialize() {
     m_bunny = res_con->rtmodel("stanford_bunny");
     m_teapot = res_con->rtmodel("utah_teapot");
     m_shader = res_con->shader("ray");
+    m_backpack = res_con->rtmodel("backpack");
+    m_backpack->activate();
     m_bunny->activate();
     m_bunny->scale_model(glm::vec3(20.0f));
+    m_bunny->translate_model(glm::vec3(5, 0, 0));
     m_teapot->activate();
     m_teapot->translate_model(glm::vec3(-5, 0, 0));
-    m_bunny->translate_model(glm::vec3(5, 0, 0));
 }
 
 void Scene::render() {

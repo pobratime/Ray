@@ -1,6 +1,7 @@
 #include "engine/resources/Mesh.hpp"
 #include "engine/resources/Model.hpp"
 #include "engine/resources/RayTracingModel.hpp"
+#include "engine/resources/Texture.hpp"
 #include <assimp/Importer.hpp>
 #include <assimp/mesh.h>
 #include <assimp/postprocess.h>
@@ -139,6 +140,10 @@ const std::vector<RayTracingModel *> &ResourcesController::rtmodels() const {
     return m_rtmodels_ptrs;
 }
 
+const std::vector<Texture *> &ResourcesController::rttextures() const {
+    return m_textures_ptrs;
+}
+
 ResourcesController::ModelLoadParams ResourcesController::resolve_model_params(const std::string &name) {
     auto &config = util::Configuration::config();
     if (!config["resources"]["models"].contains(name)) {
@@ -172,7 +177,7 @@ RayTracingModel *ResourcesController::rtmodel(const std::string &name) {
         const aiScene *scene = read_validate_scene(importer, name, params);
         AssimpSceneProcessor scene_processor(this, scene, params.path);
         RawGeometry rw = scene_processor.process_raw_geometry();
-        result = std::make_unique<RayTracingModel>(RayTracingModel(std::move(name), std::move(params.path), std::move(rw.vertices), std::move(rw.indices)));
+        result = std::make_unique<RayTracingModel>(RayTracingModel(std::move(name), std::move(params.path), std::move(rw.vertices), std::move(rw.indices), std::move(rw.texture_indexes)));
         m_rtmodels_ptrs.push_back(result.get());
     }
     return result.get();
@@ -197,6 +202,8 @@ Texture *ResourcesController::texture(const std::string &name, const std::filesy
         spdlog::info("load_texture(path={})", path.string());
         auto texture = graphics::OpenGL::generate_texture(path, flip_uvs);
         result = std::make_unique<Texture>(Texture(texture, type, path, path.stem()));
+        result->m_index = static_cast<uint32_t>(m_textures_ptrs.size());
+        m_textures_ptrs.push_back(result.get());
     }
     return result.get();
 }
@@ -224,6 +231,7 @@ Shader *ResourcesController::shader(const std::string &name, const std::filesyst
 ResourcesController::RawGeometry AssimpSceneProcessor::process_raw_geometry() {
     m_rwg.indices.clear();
     m_rwg.vertices.clear();
+    m_rwg.texture_indexes.clear();
     m_loading_model_rt = true;
     process_node(m_scene->mRootNode);
     return std::move(m_rwg);
@@ -245,20 +253,40 @@ void AssimpSceneProcessor::process_node(const aiNode *node) {
     }
 }
 
+// FIXED sub-mesh loading
 void AssimpSceneProcessor::process_mesh(aiMesh *mesh) {
     std::vector<Vertex> vertices;
     vertices.reserve(mesh->mNumVertices);
     for (unsigned int i = 0; i < mesh->mNumVertices; ++i) {
         vertices.push_back(extract_vertex(mesh, i));
     }
-
     std::vector<uint32_t> indices = extract_indices(mesh);
 
     auto material = m_scene->mMaterials[mesh->mMaterialIndex];
     std::vector<Texture *> textures = process_materials(material);
-    m_rwg.vertices.insert(m_rwg.vertices.end(), vertices.begin(), vertices.end());
-    m_rwg.indices.insert(m_rwg.indices.end(), indices.begin(), indices.end());
-    if (!m_loading_model_rt) {
+
+    if (m_loading_model_rt) {
+        glm::vec4 tex_indices{-1.0f};
+        for (auto &tex: textures) {
+            if (!tex) continue;
+            switch (tex->type()) {
+                case TextureType::Diffuse: tex_indices.x = static_cast<float>(tex->index()); break;
+                case TextureType::Specular: tex_indices.y = static_cast<float>(tex->index()); break;
+                case TextureType::Normal: tex_indices.z = static_cast<float>(tex->index()); break;
+                case TextureType::Height: tex_indices.w = static_cast<float>(tex->index()); break;
+                default: break;
+            }
+        }
+        const size_t num_triangles = indices.size() / 3;
+        for (size_t i = 0; i < num_triangles; ++i) {
+            m_rwg.texture_indexes.push_back(tex_indices);
+        }
+        const uint32_t base_index = static_cast<uint32_t>(m_rwg.vertices.size());
+        for (uint32_t idx: indices) {
+            m_rwg.indices.push_back(base_index + idx);
+        }
+        m_rwg.vertices.insert(m_rwg.vertices.end(), vertices.begin(), vertices.end());
+    } else {
         m_meshes.emplace_back(Mesh(vertices, indices, std::move(textures)));
     }
 }

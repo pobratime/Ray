@@ -30,7 +30,7 @@ public:
         uint32_t pad1;
     };
 
-    explicit TlasTree(std::vector<resources::RayTracingModel *> &rt_models);
+    explicit TlasTree(const std::vector<resources::RayTracingModel *> &rt_models);
 
     const std::vector<TlasNode> &nodes() const {
         return m_nodes;

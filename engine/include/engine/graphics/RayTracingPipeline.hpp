@@ -16,10 +16,12 @@ private:
     uint32_t m_global_blas_ssbo = 0;
     uint32_t m_tlas_ssbo = 0;
     uint32_t m_instances_ssbo = 0;
+    uint32_t m_texture_array_id = 0;
 
     void upload_global_data();
     void update_tlas();
     void setup_screen_quad();
+    void bind_textures();
     void upload_and_bind_tlas(const util::ds::TlasTree &tlas_tree);
 
     static constexpr uint32_t GLOBAL_BLAS_BINDING = 0;

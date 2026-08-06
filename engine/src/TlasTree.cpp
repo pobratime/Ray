@@ -6,7 +6,7 @@
 #include <cstdint>
 
 namespace engine::util::ds {
-TlasTree::TlasTree(std::vector<resources::RayTracingModel *> &rt_models) {
+TlasTree::TlasTree(const std::vector<resources::RayTracingModel *> &rt_models) {
     if (rt_models.empty()) return;
     std::vector<InstanceBounds> bounds{};
     bounds.reserve(rt_models.size());

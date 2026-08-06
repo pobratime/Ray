@@ -1,8 +1,8 @@
 //#shader vertex
 #version 430 core
 
-layout(location = 0) in vec2 a_pos;
-layout(location = 1) in vec2 a_uv;
+layout (location = 0) in vec2 a_pos;
+layout (location = 1) in vec2 a_uv;
 
 out vec2 v_uv;
 
@@ -18,7 +18,7 @@ in vec2 v_uv;
 
 // SSBO STRUCUTRES AND SSBOs
 struct TlasNode {
-    // 12 + 4 + 12 + 4 + 4 + 4 + 4 + 4 = 32 + 16 = 48 bytes good
+// 12 + 4 + 12 + 4 + 4 + 4 + 4 + 4 = 32 + 16 = 48 bytes good
     vec3 min_bound;
     float pad0;
     vec3 max_bound;
@@ -30,7 +30,7 @@ struct TlasNode {
 };
 
 struct GPUInstance {
-    // 64 + 64 + 4 + 4 + 4 + 4 = 128 + 16 = 144 bytes good
+// 64 + 64 + 4 + 4 + 4 + 4 = 128 + 16 = 144 bytes good
     mat4 world_to_local;
     mat4 local_to_world;
     uint blas_root_index;
@@ -40,7 +40,7 @@ struct GPUInstance {
 };
 
 struct BlasNode {
-    // 12 + 4 + 12 + 4 + 4 + 4 + 4 + 4 = 32 + 16 = 48 bytes good
+// 12 + 4 + 12 + 4 + 4 + 4 + 4 + 4 = 32 + 16 = 48 bytes good
     vec3 min_bound;
     float pad0;
     vec3 max_bound;
@@ -52,29 +52,37 @@ struct BlasNode {
 };
 
 struct GPUPrimitive {
-    // 48 * 5 = 16 * 15 = something bytes good
+// 48 * 5 = 16 * 15 = something bytes good
     vec4 v0, v1, v2;
     vec4 n0, n1, n2;
     vec4 uv0, uv1, uv2;
     vec4 t0, t1, t2;
     vec4 b0, b1, b2;
+    vec4 t_idx;
 };
 
-layout(std430, binding = 0) readonly buffer BlasTreeBuffer {
+layout (std430, binding = 0) readonly buffer BlasTreeBuffer {
     BlasNode blas_tree[];
 };
 
-layout(std430, binding = 1) readonly buffer PrimitivesBuffer {
+layout (std430, binding = 1) readonly buffer PrimitivesBuffer {
     GPUPrimitive primitives[];
 };
 
-layout(std430, binding = 2) readonly buffer TlasTreeBuffer {
+layout (std430, binding = 2) readonly buffer TlasTreeBuffer {
     TlasNode tlas_tree[];
 };
 
-layout(std430, binding = 3) readonly buffer InstancesBuffer {
+layout (std430, binding = 3) readonly buffer InstancesBuffer {
     GPUInstance instances[];
 };
+
+//  Diffuse
+//  Specular
+//  Normal
+//  Height
+
+uniform sampler2D u_Textures[16];
 
 // camera uniforms
 uniform vec3 u_camera_position;
@@ -120,13 +128,13 @@ bool triangle_intersection2(Ray ray, GPUPrimitive triangle, uint primitive_index
     bool all_pos = (sign1 >= 0.0) && (sign2 >= 0.0) && (sign3 >= 0.0);
     bool all_neg = (sign1 <= 0.0) && (sign2 <= 0.0) && (sign3 <= 0.0);
 
-    if(!all_pos && !all_neg){
+    if (!all_pos && !all_neg) {
         return false;
     }
 
     // M = ray.origin + t * ray.dir
     float sum = sign1 + sign2 + sign3;
-    if(abs(sum) < 1e-7){
+    if (abs(sum) < 1e-7) {
         // degenirsan trougao
         // a i izbegavamo deljenje nulom
         return false;
@@ -134,7 +142,7 @@ bool triangle_intersection2(Ray ray, GPUPrimitive triangle, uint primitive_index
 
     float t = (dot(cross(u, v), w)) / sum;
 
-    if(!primitive_hit.hit || (t > 1e-6 && t < primitive_hit.t)){
+    if (!primitive_hit.hit || (t > 1e-6 && t < primitive_hit.t)) {
         primitive_hit.t = t;
         primitive_hit.primitive_index = primitive_index;
         primitive_hit.instance_index = instance_index;
@@ -149,7 +157,7 @@ bool triangle_intersection2(Ray ray, GPUPrimitive triangle, uint primitive_index
 
 // Moller–Trumbore
 bool triangle_intersection(Ray ray, GPUPrimitive triangle, uint primitive_index, uint instance_index) {
-    const float EPS = 1e-5;
+    const float EPS = 1e-12;
     vec3 v0 = triangle.v0.xyz;
     vec3 v1 = triangle.v1.xyz;
     vec3 v2 = triangle.v2.xyz;
@@ -159,7 +167,7 @@ bool triangle_intersection(Ray ray, GPUPrimitive triangle, uint primitive_index,
     vec3 h = cross(ray.dir, edge2);
     float a = dot(edge1, h);
 
-    if (abs(a) < 1e-10) return false;
+    if (abs(a) < EPS) return false;
 
     float f = 1.0 / a;
     vec3 s = ray.origin - v0;
@@ -174,7 +182,7 @@ bool triangle_intersection(Ray ray, GPUPrimitive triangle, uint primitive_index,
 
     float t = f * dot(edge2, q);
 
-    if (t > 1e-5 && (!primitive_hit.hit || t < primitive_hit.t)) {
+    if (t > EPS && (!primitive_hit.hit || t < primitive_hit.t)) {
         primitive_hit.t = t;
         primitive_hit.primitive_index = primitive_index;
         primitive_hit.instance_index = instance_index;
@@ -194,7 +202,7 @@ bool aabb_intersection(Ray ray, vec3 min_bound, vec3 max_bound) {
     vec3 tmax_vec = max(t0, t1);
 
     float t_entry = max(max(tmin_vec.x, tmin_vec.y), tmin_vec.z);
-    float t_exit  = min(min(tmax_vec.x, tmax_vec.y), tmax_vec.z);
+    float t_exit = min(min(tmax_vec.x, tmax_vec.y), tmax_vec.z);
 
     t_entry = max(t_entry, 0.0);
 
@@ -205,7 +213,7 @@ bool aabb_intersection(Ray ray, vec3 min_bound, vec3 max_bound) {
 bool traverse_blas(Ray ray, uint root_index, uint instance_index) {
     bool hit = false;
     // RECURSION WON'T WORK SO WE HAVE TO FAKE IT
-    uint stack[32];
+    uint stack[128];
     stack[0] = root_index;
     int stack_ptr = 1;
     while (stack_ptr > 0) {
@@ -219,11 +227,11 @@ bool traverse_blas(Ray ray, uint root_index, uint instance_index) {
             continue;
         }
         if (node.primitive_count != 0) {
-            for(uint i = 0; i < node.primitive_count; i++){
+            for (uint i = 0; i < node.primitive_count; i++) {
                 // check all primitives individually
                 uint primitive_index = node.first_primitive + i;
                 GPUPrimitive triangle = primitives[primitive_index];
-                if(triangle_intersection(ray, triangle, primitive_index, instance_index)){
+                if (triangle_intersection(ray, triangle, primitive_index, instance_index)) {
                     hit = true;
                 }
             }
@@ -238,7 +246,7 @@ bool traverse_blas(Ray ray, uint root_index, uint instance_index) {
 bool traverse_tlas(Ray ray, uint root_index) {
     // RECURSION WON'T WORK SO WE HAVE TO FAKE IT
     bool hit = false;
-    uint stack[32];
+    uint stack[128];
     stack[0] = root_index;
     int stack_ptr = 1;
     while (stack_ptr > 0) {
@@ -265,11 +273,11 @@ bool traverse_tlas(Ray ray, uint root_index) {
 
             Ray local;
             local.origin = vec3(instance.world_to_local * vec4(ray.origin, 1.0));
-            local.dir    = vec3(instance.world_to_local * vec4(ray.dir, 0.0));
+            local.dir = vec3(instance.world_to_local * vec4(ray.dir, 0.0));
             local.inv_dir = 1.0 / local.dir;
 
             uint model_root_index = instance.blas_root_index;
-            if(traverse_blas(local, model_root_index, instance_index)){
+            if (traverse_blas(local, model_root_index, instance_index)) {
                 hit = true;
             }
         } else {
@@ -280,15 +288,47 @@ bool traverse_tlas(Ray ray, uint root_index) {
     return hit;
 }
 
+vec3 texture_primitive(GPUPrimitive tri, GPUInstance inst) {
+    int diff_idx = int(tri.t_idx.x);
+    int spec_idx = int(tri.t_idx.y);
+    int norm_idx = int(tri.t_idx.z);
+    int high_idx = int(tri.t_idx.w);
+
+    float u = primitive_hit.uv.x;
+    float v = primitive_hit.uv.y;
+    float w = 1.0f - u - v;
+
+    vec2 interpolated_uv = w * tri.uv0.xy + u * tri.uv1.xy + v * tri.uv2.xy;
+
+    vec3 diff_color = (diff_idx != -1) ? texture(u_Textures[diff_idx], interpolated_uv).rgb : vec3(1.0f);
+    vec3 norm_color = (norm_idx != -1) ? texture(u_Textures[norm_idx], interpolated_uv).rgb : vec3(0.5, 0.5, 1.0);
+    float spec_color = (spec_idx != -1) ? texture(u_Textures[spec_idx], interpolated_uv).r : 0.2f;
+
+    return diff_color;
+}
+
+vec3 color_primitive(GPUPrimitive tri, GPUInstance inst) {
+    vec3 edge1 = tri.v1.xyz - tri.v0.xyz;
+    vec3 edge2 = tri.v2.xyz - tri.v0.xyz;
+    vec3 local_normal = normalize(cross(edge1, edge2));
+
+    mat3 normal_matrix = transpose(mat3(inst.world_to_local));
+    vec3 world_normal = normalize(normal_matrix * local_normal);
+
+    vec3 normal_color = world_normal * 0.5 + 0.5;
+
+    return normal_color;
+}
+
 void main() {
     primitive_hit.hit = false;
     primitive_hit.t = 1e30;
 
     vec2 screen_uv = v_uv * 2.0 - 1.0;
     vec3 ray_dir = normalize(
-        u_camera_front +
-        u_camera_right * screen_uv.x * u_fov_tan * u_aspect_ratio +
-        u_camera_up * screen_uv.y * u_fov_tan
+            u_camera_front +
+            u_camera_right * screen_uv.x * u_fov_tan * u_aspect_ratio +
+            u_camera_up * screen_uv.y * u_fov_tan
     );
 
     Ray ray;
@@ -297,24 +337,15 @@ void main() {
     ray.inv_dir = 1.0 / ray.dir;
 
     if (traverse_tlas(ray, 0)) {
-        // TODO -> add smoothening option
         GPUInstance instance = instances[primitive_hit.instance_index];
-        GPUPrimitive tri     = primitives[primitive_hit.primitive_index];
+        GPUPrimitive tri = primitives[primitive_hit.primitive_index];
 
-        vec3 edge1 = tri.v1.xyz - tri.v0.xyz;
-        vec3 edge2 = tri.v2.xyz - tri.v0.xyz;
-        vec3 local_normal = normalize(cross(edge1, edge2));
-
-        mat3 normal_matrix = transpose(mat3(instance.world_to_local));
-        vec3 world_normal  = normalize(normal_matrix * local_normal);
-
-        vec3 normal_color = world_normal * 0.5 + 0.5;
-
-        vec3 light_dir = normalize(vec3(0.5, 1.0, 0.3));
-        float diffuse  = max(dot(world_normal, light_dir), 0.15);
-
-        // poraditi na ovome
-        FragColor = vec4(normal_color * diffuse, 1.0);
+        int diffuse_tex_idx = int(tri.t_idx.x);
+        if (diffuse_tex_idx != -1) {
+            FragColor = vec4(texture_primitive(tri, instance), 1.0f);
+        } else {
+            FragColor = vec4(color_primitive(tri, instance), 1.0f);
+        }
     } else {
         FragColor = vec4(0.08, 0.08, 0.12, 1.0);
     }

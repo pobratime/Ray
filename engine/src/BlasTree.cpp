@@ -8,15 +8,15 @@
 
 namespace engine::util::ds {
 BlasTree::BlasTree(const std::vector<engine::resources::Vertex> &vertices,
-                   const std::vector<uint32_t> &indices) {
-    std::vector<CPUPrimitive> primitives = transform_to_cpu(vertices, indices);
+                   const std::vector<uint32_t> &indices, const std::vector<glm::vec4> &texutres_indexes) {
+    std::vector<CPUPrimitive> primitives = transform_to_cpu(vertices, indices, texutres_indexes);
     m_nodes.reserve(2 * std::pow(2, log2(primitives.size())) - 1);
     build_recursive(primitives, 0, static_cast<uint32_t>(primitives.size()));
     m_primitives = transform_to_gpu(primitives);
 }
 
 std::vector<BlasTree::CPUPrimitive> BlasTree::transform_to_cpu(const std::vector<resources::Vertex> &vertices,
-                                                               const std::vector<uint32_t> &indices) {
+                                                               const std::vector<uint32_t> &indices, const std::vector<glm::vec4> &texutres_indexes) {
     std::vector<CPUPrimitive> primitives;
     primitives.reserve(indices.size() / 3);
     for (uint32_t i = 0; i < indices.size(); i += 3) {
@@ -44,6 +44,8 @@ std::vector<BlasTree::CPUPrimitive> BlasTree::transform_to_cpu(const std::vector
         prim.b0 = v0.Bitangent;
         prim.b1 = v1.Bitangent;
         prim.b2 = v2.Bitangent;
+
+        prim.texutre = texutres_indexes[i / 3];
 
         prim.centroid = (prim.v0 + prim.v1 + prim.v2) / 3.0f;
 
@@ -76,6 +78,9 @@ std::vector<BlasTree::GPUPrimitive> BlasTree::transform_to_gpu(const std::vector
         gpu.b0 = glm::vec4(prim.b0, 0.0f);
         gpu.b1 = glm::vec4(prim.b1, 0.0f);
         gpu.b2 = glm::vec4(prim.b2, 0.0f);
+
+        gpu.t_idx = prim.texutre;
+
         g_primitives.push_back(gpu);
     }
     return g_primitives;

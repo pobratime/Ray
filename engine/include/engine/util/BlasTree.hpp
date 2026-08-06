@@ -12,7 +12,8 @@ public:
     BlasTree() = default;
 
     explicit BlasTree(const std::vector<engine::resources::Vertex> &vertices,
-                      const std::vector<uint32_t> &indices);
+                      const std::vector<uint32_t> &indices,
+                      const std::vector<glm::vec4> &texutres_indexes);
 
     struct Bounds {
         glm::vec3 min;
@@ -36,6 +37,7 @@ public:
         glm::vec4 uv0, uv1, uv2;
         glm::vec4 t0, t1, t2;
         glm::vec4 b0, b1, b2;
+        glm::vec4 t_idx;
     };
 
     const std::vector<GPUPrimitive> &primitives() const {
@@ -55,20 +57,21 @@ private:
         glm::vec2 uv0, uv1, uv2;
         glm::vec3 t0, t1, t2;
         glm::vec3 b0, b1, b2;
+        glm::vec4 texutre;
         glm::vec3 centroid;
     };
 
     std::vector<GPUPrimitive> m_primitives{};
     std::vector<BlasNode> m_nodes{};
 
-    std::vector<BlasNode> build(std::vector<CPUPrimitive> &primitives);
     uint32_t build_recursive(std::vector<CPUPrimitive> &primitives,
                              uint32_t start, uint32_t end);
     Bounds compute_bounds(uint32_t start, uint32_t end,
                           const std::vector<CPUPrimitive> &primitives);
 
     std::vector<CPUPrimitive> transform_to_cpu(const std::vector<resources::Vertex> &vertices,
-                                               const std::vector<uint32_t> &indices);
+                                               const std::vector<uint32_t> &indices,
+                                               const std::vector<glm::vec4> &texutres_indexes);
     std::vector<GPUPrimitive> transform_to_gpu(const std::vector<CPUPrimitive> &primitives);
 };
 }// namespace engine::util::ds

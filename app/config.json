@@ -9,6 +9,10 @@
       "stanford_bunny": {
         "path": "stanford_bunny.obj",
         "flip_uvs": false
+      },
+      "backpack": {
+        "path": "backpack/backpack.obj",
+        "flip_uvs": false
       }
     }
   },

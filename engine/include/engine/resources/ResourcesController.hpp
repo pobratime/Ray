@@ -28,6 +28,7 @@ public:
     struct RawGeometry {
         std::vector<Vertex> vertices;
         std::vector<uint32_t> indices;
+        std::vector<glm::vec4> texture_indexes;
     };
 
     std::string_view name() const override {
@@ -35,6 +36,7 @@ public:
     }
 
     const std::vector<RayTracingModel *> &rtmodels() const;
+    const std::vector<Texture *> &rttextures() const;
 
     RayTracingModel *rtmodel(const std::string &name);
 
@@ -141,6 +143,8 @@ private:
     std::unordered_map<std::string, std::unique_ptr<RayTracingModel>> m_rtmodels;
 
     std::vector<RayTracingModel *> m_rtmodels_ptrs;
+
+    std::vector<Texture *> m_textures_ptrs;
 
     const std::filesystem::path m_models_path = "resources/models";
     const std::filesystem::path m_textures_path = "resources/textures";
