@@ -6,10 +6,10 @@
 
 namespace engine::graphics {
 
-void Framebuffer::initialize(/*TODO*/) {
+void Framebuffer::initialize(const FramebufferSpecs &specs) {
     destroy();
+    m_specs = specs;
     CHECKED_GL_CALL(glCreateFramebuffers, 1, &m_fbo);
-    // TODO
 }
 
 void Framebuffer::bind() {
