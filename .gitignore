@@ -33,6 +33,7 @@ __pycache__/
 .cache/
 *.log
 .zed/
+app/resources/models/
 
 # FIND-TODOS
 /find-todos/dist-newstyle

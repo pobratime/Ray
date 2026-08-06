@@ -9,18 +9,14 @@ namespace engine::main::app {
 void Scene::initialize() {
     const auto res_con = engine::core::Controller::get<resources::ResourcesController>();
     m_pipeline.initialize();
-    m_bunny = res_con->rtmodel("stanford_bunny");
-    m_teapot = res_con->rtmodel("utah_teapot");
+    // m_bunny = res_con->rtmodel("stanford_bunny");
+    // m_teapot = res_con->rtmodel("utah_teapot");
     m_shader = res_con->shader("ray");
-    m_backpack = res_con->rtmodel("backpack");
-    m_chess = res_con->rtmodel("chess");
-    m_chess->activate();
-    m_chess->scale_model(glm::vec3(30.0f));
-    m_bunny->activate();
-    m_bunny->scale_model(glm::vec3(20.0f));
-    m_bunny->translate_model(glm::vec3(5, 0, 0));
-    m_teapot->activate();
-    m_teapot->translate_model(glm::vec3(-5, 0, 0));
+    // m_backpack = res_con->rtmodel("backpack");
+    m_mando = res_con->rtmodel("mando");
+    // m_chess = res_con->rtmodel("chess");
+    m_mando->activate();
+    // m_chess->activate();
 }
 
 void Scene::render() {

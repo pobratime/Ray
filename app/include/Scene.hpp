@@ -15,6 +15,7 @@ private:
     resources::RayTracingModel *m_bunny{};
     resources::RayTracingModel *m_teapot{};
     resources::RayTracingModel *m_backpack{};
+    resources::RayTracingModel *m_mando{};
     resources::RayTracingModel *m_chess{};
 
     resources::Shader *m_shader{};

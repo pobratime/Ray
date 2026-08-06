@@ -2,20 +2,8 @@
   "resources": {
     "build_bvh_on_load": true,
     "models": {
-      "utah_teapot": {
-        "path": "utah_teapot.obj",
-        "flip_uvs": false
-      },
-      "stanford_bunny": {
-        "path": "stanford_bunny.obj",
-        "flip_uvs": false
-      },
-      "backpack": {
-        "path": "backpack/backpack.obj",
-        "flip_uvs": false
-      },
-      "chess": {
-        "path": "chess/chess_set_2k.gltf",
+      "mando": {
+        "path": "mando/scene.gltf",
         "flip_uvs": true
       }
     }
