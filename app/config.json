@@ -2,8 +2,8 @@
   "resources": {
     "build_bvh_on_load": true,
     "models": {
-      "mando": {
-        "path": "mando/scene.gltf",
+      "desk_lamp": {
+        "path": "industrial_pipe_lamp_2k.gltf/industrial_pipe_lamp_2k.gltf",
         "flip_uvs": true
       }
     }

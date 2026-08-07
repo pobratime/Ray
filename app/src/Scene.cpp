@@ -9,14 +9,12 @@ namespace engine::main::app {
 void Scene::initialize() {
     const auto res_con = engine::core::Controller::get<resources::ResourcesController>();
     m_pipeline.initialize();
-    // m_bunny = res_con->rtmodel("stanford_bunny");
-    // m_teapot = res_con->rtmodel("utah_teapot");
     m_shader = res_con->shader("ray");
-    // m_backpack = res_con->rtmodel("backpack");
-    m_mando = res_con->rtmodel("mando");
     // m_chess = res_con->rtmodel("chess");
-    m_mando->activate();
     // m_chess->activate();
+    m_desk_lamp = res_con->rtmodel("desk_lamp");
+    m_desk_lamp->scale_model(glm::vec3(30.0f));
+    m_desk_lamp->activate();
 }
 
 void Scene::render() {

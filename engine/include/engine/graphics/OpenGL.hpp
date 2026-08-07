@@ -76,9 +76,10 @@ public:
     *
     * @param path path to a texture file.
     * @param flip_uvs flip_uvs on load.
+    * @param data_cpy
     * @returns OpenGL id of a texture object.
     */
-    static uint32_t generate_texture(const std::filesystem::path &path, bool flip_uvs);
+    static uint32_t generate_texture(const std::filesystem::path &path, bool flip_uvs, std::vector<uint8_t> &data_cpy);
 
     /**
     * @brief Get texture format for a `number_of_channels`.

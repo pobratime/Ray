@@ -2,7 +2,6 @@
 // clang-format off
 #include <glad/glad.h>
 // clang-format on
-#include <array>
 #include <engine/graphics/OpenGL.hpp>
 #include <engine/resources/Shader.hpp>
 #include <engine/resources/ShaderCompiler.hpp>
@@ -22,7 +21,7 @@ int32_t OpenGL::shader_type_to_opengl_type(resources::ShaderType type) {
     }
 }
 
-uint32_t OpenGL::generate_texture(const std::filesystem::path &path, bool flip_uvs) {
+uint32_t OpenGL::generate_texture(const std::filesystem::path &path, const bool flip_uvs, std::vector<uint8_t> &data_cpy) {
     uint32_t texture_id = 0;
     CHECKED_GL_CALL(glGenTextures, 1, &texture_id);
 
@@ -33,6 +32,8 @@ uint32_t OpenGL::generate_texture(const std::filesystem::path &path, bool flip_u
         stbi_image_free(data);
     };
     if (data) {
+        const size_t data_size = width * height * 4;
+        // data_cpy.assign(data, data + data_size);
         int32_t format = texture_format(nr_components);
 
         CHECKED_GL_CALL(glBindTexture, GL_TEXTURE_2D, texture_id);

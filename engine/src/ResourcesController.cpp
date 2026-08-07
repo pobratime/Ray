@@ -200,7 +200,8 @@ Texture *ResourcesController::texture(const std::string &name, const std::filesy
     auto &result = m_textures[name];
     if (!result) {
         spdlog::info("load_texture(path={})", path.string());
-        auto texture = graphics::OpenGL::generate_texture(path, flip_uvs);
+        std::vector<uint8_t> pixels{};
+        const auto texture = graphics::OpenGL::generate_texture(path, flip_uvs, pixels);
         result = std::make_unique<Texture>(Texture(texture, type, path, path.stem()));
         result->m_index = static_cast<uint32_t>(m_textures_ptrs.size());
         m_textures_ptrs.push_back(result.get());
@@ -260,29 +261,35 @@ void AssimpSceneProcessor::process_mesh(aiMesh *mesh) {
     for (unsigned int i = 0; i < mesh->mNumVertices; ++i) {
         vertices.push_back(extract_vertex(mesh, i));
     }
-    std::vector<uint32_t> indices = extract_indices(mesh);
+    const std::vector<uint32_t> indices = extract_indices(mesh);
 
-    auto material = m_scene->mMaterials[mesh->mMaterialIndex];
+    const auto material = m_scene->mMaterials[mesh->mMaterialIndex];
     std::vector<Texture *> textures = process_materials(material);
 
     if (m_loading_model_rt) {
-        glm::vec4 tex_indices{-1.0f};
-        for (auto &tex: textures) {
+        glm::vec4 tex_indices_a{-1.0f};
+        // more textures to be added
+        glm::vec4 tex_indices_b{-1.0f};
+        for (const auto &tex: textures) {
             if (!tex) continue;
             switch (tex->type()) {
-                case TextureType::Diffuse: tex_indices.x = static_cast<float>(tex->index()); break;
-                case TextureType::Specular: tex_indices.y = static_cast<float>(tex->index()); break;
-                case TextureType::Normal: tex_indices.z = static_cast<float>(tex->index()); break;
-                case TextureType::Height: tex_indices.w = static_cast<float>(tex->index()); break;
+                case TextureType::Diffuse: tex_indices_a.x = static_cast<float>(tex->index()); break;
+                case TextureType::Specular: tex_indices_a.y = static_cast<float>(tex->index()); break;
+                case TextureType::Normal: tex_indices_a.z = static_cast<float>(tex->index()); break;
+                case TextureType::Height: tex_indices_a.w = static_cast<float>(tex->index()); break;
+                case TextureType::Emissive: tex_indices_b.x = static_cast<float>(tex->index()); break;
+                case TextureType::Metalness: tex_indices_b.y = static_cast<float>(tex->index()); break;
+                case TextureType::DiffuseRoughness: tex_indices_b.z = static_cast<float>(tex->index()); break;
+                case TextureType::AmbientOcclusion: tex_indices_b.w = static_cast<float>(tex->index()); break;
                 default: break;
             }
         }
         const size_t num_triangles = indices.size() / 3;
         for (size_t i = 0; i < num_triangles; ++i) {
-            m_rwg.texture_indexes.push_back(tex_indices);
+            m_rwg.texture_indexes.push_back(tex_indices_a);
         }
-        const uint32_t base_index = static_cast<uint32_t>(m_rwg.vertices.size());
-        for (uint32_t idx: indices) {
+        const auto base_index = static_cast<uint32_t>(m_rwg.vertices.size());
+        for (const uint32_t idx: indices) {
             m_rwg.indices.push_back(base_index + idx);
         }
         m_rwg.vertices.insert(m_rwg.vertices.end(), vertices.begin(), vertices.end());
@@ -326,6 +333,10 @@ std::vector<Texture *> AssimpSceneProcessor::process_materials(const aiMaterial 
             aiTextureType_SPECULAR,
             aiTextureType_NORMALS,
             aiTextureType_HEIGHT,
+            aiTextureType_EMISSIVE,
+            aiTextureType_METALNESS,
+            aiTextureType_DIFFUSE_ROUGHNESS,
+            aiTextureType_AMBIENT_OCCLUSION
     };
 
     for (auto ai_texture_type: ai_texture_types) {
@@ -349,8 +360,12 @@ TextureType AssimpSceneProcessor::assimp_texture_type_to_engine(aiTextureType ty
     switch (type) {
         case aiTextureType_DIFFUSE: return TextureType::Diffuse;
         case aiTextureType_SPECULAR: return TextureType::Specular;
-        case aiTextureType_HEIGHT: return TextureType::Height;
         case aiTextureType_NORMALS: return TextureType::Normal;
+        case aiTextureType_HEIGHT: return TextureType::Height;
+        case aiTextureType_EMISSIVE: return TextureType::Emissive;
+        case aiTextureType_METALNESS: return TextureType::Metalness;
+        case aiTextureType_DIFFUSE_ROUGHNESS: return TextureType::DiffuseRoughness;
+        case aiTextureType_AMBIENT_OCCLUSION: return TextureType::AmbientOcclusion;
         default: RG_SHOULD_NOT_REACH_HERE("Engine currently doesn't support the aiTextureType: {}", static_cast<int>(type));
     }
 }

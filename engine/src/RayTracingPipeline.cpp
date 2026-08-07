@@ -34,12 +34,19 @@ void RayTracingPipeline::bind_textures() {
     const auto shader = res_con->shader("ray");
     shader->use();
     const std::vector<resources::Texture *> &textures = res_con->rttextures();
-    for (size_t i = 0; i < textures.size(); i++) {
+    size_t i = 0;
+    for (; i < textures.size(); i++) {
         const int32_t sampler_slot = GL_TEXTURE0 + static_cast<int32_t>(i);
         textures[i]->bind(sampler_slot);
-        std::string uniform_name = std::format("u_Textures[{}]", i);
+        std::string uniform_name = std::format("u_Textures1[{}]", i);
         shader->set_int(uniform_name, static_cast<int32_t>(i));
     }
+    // for (; i < textures.size() && i < 32; i++) {
+    //     const int32_t sampler_slot = GL_TEXTURE0 + static_cast<int32_t>(i);
+    //     textures[i]->bind(sampler_slot);
+    //     std::string uniform_name = std::format("u_Textures2[{}]", i);
+    //     shader->set_int(uniform_name, static_cast<int32_t>(i));
+    // }
 }
 
 void RayTracingPipeline::update_tlas() {

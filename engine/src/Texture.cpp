@@ -8,10 +8,15 @@
 namespace engine::resources {
 std::string_view texture_type_to_string(TextureType type) {
     switch (type) {
+        case TextureType::Regular: return "Regular";
         case TextureType::Diffuse: return "Diffuse";
         case TextureType::Specular: return "Specular";
         case TextureType::Normal: return "Normal";
         case TextureType::Height: return "Height";
+        case TextureType::Emissive: return "Emissive";
+        case TextureType::Metalness: return "Metallness";
+        case TextureType::DiffuseRoughness: return "DiffuseRoughness";
+        case TextureType::AmbientOcclusion: return "AmbientOcclusion";
         default: RG_SHOULD_NOT_REACH_HERE("Unknown TextureType");
     }
 }

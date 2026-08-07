@@ -44,7 +44,7 @@ void PlatformController::initialize() {
     bool glfw_initialized = glfwInit();
     RG_GUARANTEE(glfw_initialized, "GLFW platform failed to initialize_controllers.");
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     util::Configuration::json &config = util::Configuration::config();
