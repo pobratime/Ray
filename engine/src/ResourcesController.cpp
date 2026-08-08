@@ -287,6 +287,7 @@ void AssimpSceneProcessor::process_mesh(aiMesh *mesh) {
         const size_t num_triangles = indices.size() / 3;
         for (size_t i = 0; i < num_triangles; ++i) {
             m_rwg.texture_indexes.push_back(tex_indices_a);
+            m_rwg.texture_indexes.push_back(tex_indices_b);
         }
         const auto base_index = static_cast<uint32_t>(m_rwg.vertices.size());
         for (const uint32_t idx: indices) {
@@ -318,7 +319,7 @@ std::vector<uint32_t> AssimpSceneProcessor::extract_indices(const aiMesh *mesh) 
     std::vector<uint32_t> indices;
     indices.reserve(static_cast<size_t>(mesh->mNumFaces) * 3);
     for (uint32_t i = 0; i < mesh->mNumFaces; ++i) {
-        aiFace face = mesh->mFaces[i];
+        const aiFace face = mesh->mFaces[i];
         for (uint32_t j = 0; j < face.mNumIndices; ++j) {
             indices.push_back(face.mIndices[j]);
         }
@@ -336,8 +337,7 @@ std::vector<Texture *> AssimpSceneProcessor::process_materials(const aiMaterial 
             aiTextureType_EMISSIVE,
             aiTextureType_METALNESS,
             aiTextureType_DIFFUSE_ROUGHNESS,
-            aiTextureType_AMBIENT_OCCLUSION
-    };
+            aiTextureType_AMBIENT_OCCLUSION};
 
     for (auto ai_texture_type: ai_texture_types) {
         process_material_type(textures, material, ai_texture_type);
