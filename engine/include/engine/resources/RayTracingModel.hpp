@@ -78,9 +78,10 @@ private:
     std::string m_name;
     std::string m_path;
 
-    std::vector<Vertex> m_vertices;
-    std::vector<uint32_t> m_indices;
-    std::vector<glm::vec4> m_textures_indexes;
+    std::vector<Vertex> m_vertices{};
+    std::vector<uint32_t> m_indices{};
+    std::vector<glm::vec4> m_textures_indexes{};
+    std::vector<glm::vec3> m_local_emissive_centroids{};
 
     glm::vec3 m_position{0.0f};
     glm::vec3 m_rotation{0.0f};
@@ -91,12 +92,14 @@ private:
             std::string path,
             std::vector<Vertex> vertices,
             std::vector<uint32_t> indices,
-            std::vector<glm::vec4> texutres_indexes)
+            std::vector<glm::vec4> texutres_indexes,
+            std::vector<glm::vec3> emissive_centroids)
         : m_name(std::move(name))
         , m_path(std::move(path))
         , m_vertices(std::move(vertices))
         , m_indices(std::move(indices))
-        , m_textures_indexes(std::move(texutres_indexes)) {};
+        , m_textures_indexes(std::move(texutres_indexes))
+        , m_local_emissive_centroids(std::move(emissive_centroids)) {};
 };
 
 }// namespace engine::resources

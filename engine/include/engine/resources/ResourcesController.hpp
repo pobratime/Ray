@@ -6,8 +6,10 @@
 #ifndef MATF_RG_PROJECT_RESOURCES_CONTROLLER_HPP
 #define MATF_RG_PROJECT_RESOURCES_CONTROLLER_HPP
 
+#include "engine/resources/Mesh.hpp"
 #include "engine/resources/RayTracingModel.hpp"
 #include <assimp/Importer.hpp>
+#include <cstdint>
 #include <engine/core/Controller.hpp>
 #include <engine/resources/Model.hpp>
 #include <engine/resources/Shader.hpp>
@@ -29,6 +31,12 @@ public:
         std::vector<Vertex> vertices;
         std::vector<uint32_t> indices;
         std::vector<glm::vec4> texture_indexes;
+        std::vector<glm::vec3> emissive_local_centroids;
+    };
+
+    struct EmissiveRawGeometry {
+        std::vector<Vertex> vertices;
+        std::vector<uint32_t> indices;
     };
 
     std::string_view name() const override {

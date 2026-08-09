@@ -116,8 +116,8 @@ public:
     }
 
 private:
-    void process_node(const aiNode *node);
-    void process_mesh(aiMesh *mesh);
+    void process_node(const aiNode *node, const glm::mat4 &parent_transform);
+    void process_mesh(aiMesh *mesh, const glm::mat4 &transform);
 
     std::vector<uint32_t> extract_indices(const aiMesh *mesh);
     Vertex extract_vertex(const aiMesh *mesh, unsigned int i);
@@ -177,7 +177,12 @@ RayTracingModel *ResourcesController::rtmodel(const std::string &name) {
         const aiScene *scene = read_validate_scene(importer, name, params);
         AssimpSceneProcessor scene_processor(this, scene, params.path);
         RawGeometry rw = scene_processor.process_raw_geometry();
-        result = std::make_unique<RayTracingModel>(RayTracingModel(std::move(name), std::move(params.path), std::move(rw.vertices), std::move(rw.indices), std::move(rw.texture_indexes)));
+        result = std::make_unique<RayTracingModel>(RayTracingModel(name,
+                                                                   std::move(params.path),
+                                                                   std::move(rw.vertices),
+                                                                   std::move(rw.indices),
+                                                                   std::move(rw.texture_indexes),
+                                                                   std::move(rw.emissive_local_centroids)));
         m_rtmodels_ptrs.push_back(result.get());
     }
     return result.get();
@@ -234,32 +239,57 @@ ResourcesController::RawGeometry AssimpSceneProcessor::process_raw_geometry() {
     m_rwg.vertices.clear();
     m_rwg.texture_indexes.clear();
     m_loading_model_rt = true;
-    process_node(m_scene->mRootNode);
+    process_node(m_scene->mRootNode, glm::mat4(1.0f));
     return std::move(m_rwg);
 }
 
 std::vector<Mesh> AssimpSceneProcessor::process_meshes() {
     m_meshes.clear();
-    process_node(m_scene->mRootNode);
+    process_node(m_scene->mRootNode, glm::mat4(1.0f));
+    spdlog::info("scene name -> {}", m_scene->mName.C_Str());
     return std::move(m_meshes);
 }
 
-void AssimpSceneProcessor::process_node(const aiNode *node) {
+static glm::mat4 ai_matrix_to_glm(const aiMatrix4x4 &m) {
+    return glm::mat4(
+            m.a1, m.b1, m.c1, m.d1,
+            m.a2, m.b2, m.c2, m.d2,
+            m.a3, m.b3, m.c3, m.d3,
+            m.a4, m.b4, m.c4, m.d4);
+}
+
+// FIXED SUB-MODEL LOADING AND APPLIED TRANSFORMATIONS TO SUBMODELS
+void AssimpSceneProcessor::process_node(const aiNode *node, const glm::mat4 &parent_transform) {
+    glm::mat4 node_transform = ai_matrix_to_glm(node->mTransformation);
+    glm::mat4 accumulated_transform = parent_transform * node_transform;
+
+    spdlog::info("model / submodel name -> {}", node->mName.C_Str());
     for (uint32_t i = 0; i < node->mNumMeshes; ++i) {
         auto mesh = m_scene->mMeshes[node->mMeshes[i]];
-        process_mesh(mesh);
+        spdlog::info("mesh name -> {}", mesh->mName.C_Str());
+        process_mesh(mesh, accumulated_transform);
     }
     for (uint32_t i = 0; i < node->mNumChildren; ++i) {
-        process_node(node->mChildren[i]);
+        process_node(node->mChildren[i], accumulated_transform);
     }
 }
 
 // FIXED sub-mesh loading
-void AssimpSceneProcessor::process_mesh(aiMesh *mesh) {
+void AssimpSceneProcessor::process_mesh(aiMesh *mesh, const glm::mat4 &transform) {
+    const std::string mesh_name = mesh->mName.C_Str();
+    const bool emissve_flag = mesh_name.contains("emissive");
     std::vector<Vertex> vertices;
+    glm::mat3 normal_matrix = glm::transpose(glm::inverse(glm::mat3(transform)));
     vertices.reserve(mesh->mNumVertices);
     for (unsigned int i = 0; i < mesh->mNumVertices; ++i) {
-        vertices.push_back(extract_vertex(mesh, i));
+        Vertex v = extract_vertex(mesh, i);
+        v.Position = glm::vec3(transform * glm::vec4(v.Position, 1.0f));
+        v.Normal = glm::normalize(normal_matrix * v.Normal);
+        if (mesh->mTextureCoords[0]) {
+            v.Tangent = glm::normalize(normal_matrix * v.Tangent);
+            v.Bitangent = glm::normalize(normal_matrix * v.Bitangent);
+        }
+        vertices.push_back(v);
     }
     const std::vector<uint32_t> indices = extract_indices(mesh);
 
@@ -267,8 +297,8 @@ void AssimpSceneProcessor::process_mesh(aiMesh *mesh) {
     std::vector<Texture *> textures = process_materials(material);
 
     if (m_loading_model_rt) {
+        // ovo promeniti koristiti materialId kao sto je marko preporucio a unutar materialId staviti indekse ovih stvar
         glm::vec4 tex_indices_a{-1.0f};
-        // more textures to be added
         glm::vec4 tex_indices_b{-1.0f};
         for (const auto &tex: textures) {
             if (!tex) continue;
@@ -292,6 +322,12 @@ void AssimpSceneProcessor::process_mesh(aiMesh *mesh) {
         const auto base_index = static_cast<uint32_t>(m_rwg.vertices.size());
         for (const uint32_t idx: indices) {
             m_rwg.indices.push_back(base_index + idx);
+        }
+        if (emissve_flag) {
+            glm::vec3 sum(0.0f);
+            for (const auto &v: vertices) sum += v.Position;
+            glm::vec3 local_centroid = sum / static_cast<float>(vertices.size());
+            m_rwg.emissive_local_centroids.push_back(local_centroid);
         }
         m_rwg.vertices.insert(m_rwg.vertices.end(), vertices.begin(), vertices.end());
     } else {
