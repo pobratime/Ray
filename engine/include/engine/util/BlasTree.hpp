@@ -37,7 +37,8 @@ public:
         glm::vec4 uv0, uv1, uv2;
         glm::vec4 t0, t1, t2;
         glm::vec4 b0, b1, b2;
-        glm::vec4 t_idx;
+        glm::vec4 t_idx_a;
+        glm::vec4 t_idx_b;
     };
 
     const std::vector<GPUPrimitive> &primitives() const {
@@ -57,7 +58,8 @@ private:
         glm::vec2 uv0, uv1, uv2;
         glm::vec3 t0, t1, t2;
         glm::vec3 b0, b1, b2;
-        glm::vec4 texutre;
+        glm::vec4 texutre_a;
+        glm::vec4 texture_b;
         glm::vec3 centroid;
     };
 

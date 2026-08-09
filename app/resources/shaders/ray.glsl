@@ -59,6 +59,7 @@ struct GPUPrimitive {
     vec4 t0, t1, t2;
     vec4 b0, b1, b2;
     vec4 t_idx;
+    vec4 t_idx_b;
 };
 
 struct GPULightSource {
@@ -85,10 +86,15 @@ layout(std430, binding = 4) readonly buffer LightsBuffer {
     GPULightSource lights[];
 };
 
-//  Diffuse
-//  Specular
-//  Normal
-//  Height
+//     Regular,
+//     Diffuse,
+//     Specular,
+//     Normal,
+//     Height,
+//     Emissive,
+//     Metalness,
+//     DiffuseRoughness,
+//     AmbientOcclusion
 
 uniform sampler2D u_Textures[16];
 
@@ -296,11 +302,33 @@ bool traverse_tlas(Ray ray, uint root_index) {
     return hit;
 }
 
+void light_ray(){
+
+}
+
+void shadow_ray(){
+
+}
+
+//     Regular,
+//     Diffuse,
+//     Specular,
+//     Normal,
+//     Height,
+//     Emissive,
+//     Metalness,
+//     DiffuseRoughness,
+//     AmbientOcclusion
+
 vec3 texture_primitive(GPUPrimitive tri, GPUInstance inst) {
     int diff_idx = int(tri.t_idx.x);
     int spec_idx = int(tri.t_idx.y);
     int norm_idx = int(tri.t_idx.z);
     int high_idx = int(tri.t_idx.w);
+    int emis_idx = int(tri.t_idx_b.x);
+    int metl_idx = int(tri.t_idx_b.y);
+    int difr_idx = int(tri.t_idx_b.z);
+    int amoc_idx = int(tri.t_idx_b.w);
 
     float u = primitive_hit.uv.x;
     float v = primitive_hit.uv.y;

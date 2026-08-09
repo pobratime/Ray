@@ -42,7 +42,7 @@ void RayTracingPipeline::bind_textures() {
     for (; i < textures.size(); i++) {
         const int32_t sampler_slot = GL_TEXTURE0 + static_cast<int32_t>(i);
         textures[i]->bind(sampler_slot);
-        std::string uniform_name = std::format("u_Textures1[{}]", i);
+        std::string uniform_name = std::format("u_Textures[{}]", i);
         shader->set_int(uniform_name, static_cast<int32_t>(i));
     }
     // for (; i < textures.size() && i < 32; i++) {

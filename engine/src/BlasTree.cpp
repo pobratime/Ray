@@ -45,7 +45,8 @@ std::vector<BlasTree::CPUPrimitive> BlasTree::transform_to_cpu(const std::vector
         prim.b1 = v1.Bitangent;
         prim.b2 = v2.Bitangent;
 
-        prim.texutre = texutres_indexes[i / 3];
+        prim.texutre_a = texutres_indexes[(i / 3) * 2];
+        prim.texture_b = texutres_indexes[(i / 3) * 2 + 1];
 
         prim.centroid = (prim.v0 + prim.v1 + prim.v2) / 3.0f;
 
@@ -79,7 +80,8 @@ std::vector<BlasTree::GPUPrimitive> BlasTree::transform_to_gpu(const std::vector
         gpu.b1 = glm::vec4(prim.b1, 0.0f);
         gpu.b2 = glm::vec4(prim.b2, 0.0f);
 
-        gpu.t_idx = prim.texutre;
+        gpu.t_idx_a = prim.texutre_a;
+        gpu.t_idx_b = prim.texture_b;
 
         g_primitives.push_back(gpu);
     }
