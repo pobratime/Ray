@@ -13,6 +13,7 @@
 #include <engine/util/Errors.hpp>
 #include <memory>
 #include <spdlog/spdlog.h>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -117,7 +118,7 @@ public:
 
 private:
     void process_node(const aiNode *node, const glm::mat4 &parent_transform);
-    void process_mesh(aiMesh *mesh, const glm::mat4 &transform);
+    void process_mesh(aiMesh *mesh, const glm::mat4 &transform, bool emissive_flag);
 
     std::vector<uint32_t> extract_indices(const aiMesh *mesh);
     Vertex extract_vertex(const aiMesh *mesh, unsigned int i);
@@ -264,10 +265,11 @@ void AssimpSceneProcessor::process_node(const aiNode *node, const glm::mat4 &par
     glm::mat4 accumulated_transform = parent_transform * node_transform;
 
     spdlog::info("model / submodel name -> {}", node->mName.C_Str());
+    const std::string model_name = node->mName.C_Str();
     for (uint32_t i = 0; i < node->mNumMeshes; ++i) {
         auto mesh = m_scene->mMeshes[node->mMeshes[i]];
         spdlog::info("mesh name -> {}", mesh->mName.C_Str());
-        process_mesh(mesh, accumulated_transform);
+        process_mesh(mesh, accumulated_transform, model_name.contains("emissive"));
     }
     for (uint32_t i = 0; i < node->mNumChildren; ++i) {
         process_node(node->mChildren[i], accumulated_transform);
@@ -275,9 +277,11 @@ void AssimpSceneProcessor::process_node(const aiNode *node, const glm::mat4 &par
 }
 
 // FIXED sub-mesh loading
-void AssimpSceneProcessor::process_mesh(aiMesh *mesh, const glm::mat4 &transform) {
-    const std::string mesh_name = mesh->mName.C_Str();
-    const bool emissve_flag = mesh_name.contains("emissive");
+void AssimpSceneProcessor::process_mesh(aiMesh *mesh, const glm::mat4 &transform, bool emissive_flag) {
+    std::string mesh_name = mesh->mName.C_Str();
+    if (mesh_name.contains("emissive")) {
+        emissive_flag = true;
+    }
     std::vector<Vertex> vertices;
     glm::mat3 normal_matrix = glm::transpose(glm::inverse(glm::mat3(transform)));
     vertices.reserve(mesh->mNumVertices);
@@ -323,11 +327,12 @@ void AssimpSceneProcessor::process_mesh(aiMesh *mesh, const glm::mat4 &transform
         for (const uint32_t idx: indices) {
             m_rwg.indices.push_back(base_index + idx);
         }
-        if (emissve_flag) {
+        if (emissive_flag) {
             glm::vec3 sum(0.0f);
             for (const auto &v: vertices) sum += v.Position;
             glm::vec3 local_centroid = sum / static_cast<float>(vertices.size());
             m_rwg.emissive_local_centroids.push_back(local_centroid);
+            spdlog::info("EMISSIVE YAY");
         }
         m_rwg.vertices.insert(m_rwg.vertices.end(), vertices.begin(), vertices.end());
     } else {

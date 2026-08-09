@@ -61,6 +61,10 @@ struct GPUPrimitive {
     vec4 t_idx;
 };
 
+struct GPULightSource {
+    vec4 position;
+};
+
 layout (std430, binding = 0) readonly buffer BlasTreeBuffer {
     BlasNode blas_tree[];
 };
@@ -75,6 +79,10 @@ layout (std430, binding = 2) readonly buffer TlasTreeBuffer {
 
 layout (std430, binding = 3) readonly buffer InstancesBuffer {
     GPUInstance instances[];
+};
+
+layout(std430, binding = 4) readonly buffer LightsBuffer {
+    GPULightSource lights[];
 };
 
 //  Diffuse

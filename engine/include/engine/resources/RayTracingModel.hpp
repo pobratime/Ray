@@ -72,6 +72,10 @@ public:
         return m_scale;
     }
 
+    const std::vector<glm::vec3> &centroids() const {
+        return m_local_emissive_centroids;
+    }
+
 private:
     bool m_active = false;
 

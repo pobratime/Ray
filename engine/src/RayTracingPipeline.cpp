@@ -1,5 +1,4 @@
 // clang-format off
-#include <cstddef>
 #include <glad/glad.h>
 // clang-format on
 #include "engine/graphics/RayTracingPipeline.hpp"
@@ -11,6 +10,8 @@
 #include "engine/util/Errors.hpp"
 #include "engine/util/ThreadPool.hpp"
 #include "engine/util/TlasTree.hpp"
+#include "glm/ext/vector_float3.hpp"
+#include <cstddef>
 #include <cstdint>
 #include <future>
 #include <vector>
@@ -19,10 +20,13 @@ namespace engine::graphics {
 void RayTracingPipeline::initialize() {
     upload_global_data();
     setup_screen_quad();
+    CHECKED_GL_CALL(glEnable, GL_BLEND);
+    CHECKED_GL_CALL(glBlendFunc, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
 
 void RayTracingPipeline::render() {
     update_tlas();
+    update_lights();
     bind_textures();
     CHECKED_GL_CALL(glBindVertexArray, m_quad_vao);
     CHECKED_GL_CALL(glDrawArrays, GL_TRIANGLES, 0, 6);
@@ -49,6 +53,49 @@ void RayTracingPipeline::bind_textures() {
     // }
 }
 
+void RayTracingPipeline::update_lights() {
+    const auto res_con = engine::core::Controller::get<resources::ResourcesController>();
+    const std::vector<resources::RayTracingModel *> rtmodels = res_con->rtmodels();
+    std::vector<glm::vec4> world_centroids{};
+    world_centroids.reserve(rtmodels.size());// overshoot
+    for (auto &r: rtmodels) {
+        if (r->is_active() && !r->centroids().empty()) {
+            std::vector<glm::vec3> local_centroids = r->centroids();
+            for (auto l_c: local_centroids) {
+                glm::vec4 w = r->get_local_to_world() * glm::vec4(l_c, 1.0f);
+                world_centroids.push_back(w);
+            }
+        }
+    }
+    if (world_centroids.size() == 0) {
+        return;
+    }
+    if (m_last_lights_size < world_centroids.size()) {
+        upload_and_bind_lights(world_centroids);
+        return;
+    }
+    CHECKED_GL_CALL(glNamedBufferSubData,
+                    m_lights_ssbo,
+                    0,
+                    sizeof(glm::vec4) * world_centroids.size(),
+                    world_centroids.data());
+}
+
+void RayTracingPipeline::upload_and_bind_lights(const std::vector<glm::vec4> &light_srcs) {
+    m_last_lights_size = light_srcs.size();
+
+    if (m_last_lights_size) {
+        CHECKED_GL_CALL(glDeleteBuffers, 1, &m_lights_ssbo);
+    }
+    CHECKED_GL_CALL(glCreateBuffers, 1, &m_lights_ssbo);
+    CHECKED_GL_CALL(glNamedBufferStorage,
+                    m_lights_ssbo,
+                    sizeof(glm::vec4) * light_srcs.size(),
+                    static_cast<const void *>(light_srcs.data()),
+                    GL_DYNAMIC_STORAGE_BIT);
+    CHECKED_GL_CALL(glBindBufferBase, GL_SHADER_STORAGE_BUFFER, LIGHTS_BINDING, m_lights_ssbo);
+}
+
 void RayTracingPipeline::update_tlas() {
     const auto res_con = engine::core::Controller::get<resources::ResourcesController>();
     const std::vector<resources::RayTracingModel *> rtmodels = res_con->rtmodels();
@@ -58,6 +105,9 @@ void RayTracingPipeline::update_tlas() {
         if (r->is_active()) {
             active_rtmodels.push_back(r);
         }
+    }
+    if (active_rtmodels.size() == 0) {
+        return;
     }
 
     const util::ds::TlasTree tlas_tree{active_rtmodels};
@@ -117,7 +167,7 @@ void RayTracingPipeline::upload_and_bind_tlas(const util::ds::TlasTree &tlas_tre
                     sizeof(util::ds::TlasTree::GPUInstance) * instances.size(),
                     static_cast<const void *>(instances.data()),
                     GL_DYNAMIC_STORAGE_BIT);
-    CHECKED_GL_CALL(glBindBufferBase, GL_SHADER_STORAGE_BUFFER, INSTANCE_BINDIING, m_instances_ssbo);
+    CHECKED_GL_CALL(glBindBufferBase, GL_SHADER_STORAGE_BUFFER, INSTANCE_BINDING, m_instances_ssbo);
 }
 
 void RayTracingPipeline::upload_global_data() {
