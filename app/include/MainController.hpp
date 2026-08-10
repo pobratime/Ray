@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Scene.hpp"
 #include "engine/core/Controller.hpp"
 
 namespace engine::main::app {
@@ -16,6 +15,5 @@ private:
     void end_draw() override;
 
     bool m_running = true;
-    Scene m_scene;
 };
 }// namespace engine::main::app

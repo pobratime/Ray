@@ -6,7 +6,7 @@
 
 namespace engine::main::app {
 void MainController::initialize() {
-    m_scene.initialize();
+    // core::Controller::get<Scene>()->initialize();
 }
 
 bool MainController::loop() {
@@ -19,7 +19,7 @@ void MainController::begin_draw() {
 
 void MainController::draw() {
     // TODO add another scene maybe
-    m_scene.render();
+    core::Controller::get<Scene>()->render();
 }
 
 void MainController::end_draw() {

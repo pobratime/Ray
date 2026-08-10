@@ -5,7 +5,8 @@
 namespace engine::main {
 void CameraController::initialize() {
     const auto graphics_controller = get<graphics::GraphicsController>();
-    graphics_controller->camera()->Position = {0.0f, 2.0f, 5.0f};
+    graphics_controller->camera()->Position = {-1.0f, 1.0f, 0.0f};
+    // graphics_controller->camera()->Front = {1.0f, -0.5f, 0.0f};
     const auto platform_controller = get<platform::PlatformController>();
     platform_controller->set_enable_cursor(m_cursor_locked);
 }

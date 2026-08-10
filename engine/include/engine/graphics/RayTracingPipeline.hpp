@@ -7,8 +7,16 @@
 namespace engine::graphics {
 class RayTracingPipeline {
 public:
-    void initialize();
-    void render();
+    struct RenderSettings {
+        int light_samples = 2;
+        int reflection_count = 1;
+        float min_reflection = 0.3f;
+        float light_power = 1.0f;
+        float ambient = 0.25f;
+        bool use_textures = true;
+    };
+    void initialize(RenderSettings &s);
+    void render(RenderSettings &s);
     void destroy();
 
 private:
@@ -20,6 +28,7 @@ private:
     uint32_t m_texture_array_id = 0;
 
     void upload_global_data();
+    void set_settings();
     void update_tlas();
     void update_lights();
     void setup_screen_quad();
@@ -39,5 +48,7 @@ private:
 
     uint32_t m_quad_vao = 0;
     uint32_t m_quad_vbo = 0;
+
+    RenderSettings m_settings{};
 };
 }// namespace engine::graphics

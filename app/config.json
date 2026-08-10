@@ -9,12 +9,16 @@
       "chess": {
         "path": "chess_set_2k.gltf/chess_set_2k.gltf",
         "flip_uvs": true
+      },
+      "table": {
+        "path": "side_table_01_2k.gltf/side_table_01_2k.gltf",
+        "flip_uvs": true
       }
     }
   },
   "window": {
-    "height": 1964,
+    "height": 720,
     "title": "Ray",
-    "width": 3024
+    "width":1080
   }
 }

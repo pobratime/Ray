@@ -16,9 +16,7 @@ void main() {
 
 in vec2 v_uv;
 
-// SSBO STRUCUTRES AND SSBOs
 struct TlasNode {
-// 12 + 4 + 12 + 4 + 4 + 4 + 4 + 4 = 32 + 16 = 48 bytes good
     vec3 min_bound;
     float pad0;
     vec3 max_bound;
@@ -30,7 +28,6 @@ struct TlasNode {
 };
 
 struct GPUInstance {
-// 64 + 64 + 4 + 4 + 4 + 4 = 128 + 16 = 144 bytes good
     mat4 world_to_local;
     mat4 local_to_world;
     uint blas_root_index;
@@ -40,7 +37,6 @@ struct GPUInstance {
 };
 
 struct BlasNode {
-// 12 + 4 + 12 + 4 + 4 + 4 + 4 + 4 = 32 + 16 = 48 bytes good
     vec3 min_bound;
     float pad0;
     vec3 max_bound;
@@ -52,14 +48,12 @@ struct BlasNode {
 };
 
 struct GPUPrimitive {
-// 48 * 5 = 16 * 15 = something bytes good
     vec4 v0, v1, v2;
     vec4 n0, n1, n2;
     vec4 uv0, uv1, uv2;
     vec4 t0, t1, t2;
     vec4 b0, b1, b2;
     vec4 t_idx;
-    vec4 t_idx_b;
 };
 
 struct GPULightSource {
@@ -86,16 +80,6 @@ layout(std430, binding = 4) readonly buffer LightsBuffer {
     GPULightSource lights[];
 };
 
-//     Regular,
-//     Diffuse,
-//     Specular,
-//     Normal,
-//     Height,
-//     Emissive,
-//     Metalness,
-//     DiffuseRoughness,
-//     AmbientOcclusion
-
 uniform sampler2D u_Textures[16];
 
 // camera uniforms
@@ -105,6 +89,24 @@ uniform vec3 u_camera_up;
 uniform vec3 u_camera_right;
 uniform float u_fov_tan;
 uniform float u_aspect_ratio;
+
+uniform int u_light_count;
+
+// RenderSettings
+uniform int u_light_samples;
+uniform int u_reflection_count;
+uniform float u_min_reflection;
+uniform float u_light_power;
+uniform float u_ambient;
+uniform bool u_use_textures;
+
+// Hard upper bounds so the compiler still knows a maximum trip count even
+// though the real limit is a uniform.
+const int MAX_LIGHT_SAMPLES = 16;
+const int MAX_REFLECTIONS = 4;
+
+// Radius of the emitter used for soft shadows. Roughly the size of the bulb.
+const float LIGHT_RADIUS = 0.02;
 
 out vec4 FragColor;
 
@@ -122,56 +124,12 @@ struct HitData {
     bool hit;
 };
 
-// global hit data
 HitData primitive_hit;
 
-// TODO -> add switch option
-bool triangle_intersection2(Ray ray, GPUPrimitive triangle, uint primitive_index, uint instance_index) {
-    vec3 v0 = triangle.v0.xyz;
-    vec3 v1 = triangle.v1.xyz;
-    vec3 v2 = triangle.v2.xyz;
-
-    vec3 u = v0 - ray.origin;
-    vec3 v = v1 - ray.origin;
-    vec3 w = v2 - ray.origin;
-
-    float sign1 = dot(cross(u, v), ray.dir);
-    float sign2 = dot(cross(v, w), ray.dir);
-    float sign3 = dot(cross(w, u), ray.dir);
-
-    bool all_pos = (sign1 >= 0.0) && (sign2 >= 0.0) && (sign3 >= 0.0);
-    bool all_neg = (sign1 <= 0.0) && (sign2 <= 0.0) && (sign3 <= 0.0);
-
-    if (!all_pos && !all_neg) {
-        return false;
-    }
-
-    // M = ray.origin + t * ray.dir
-    float sum = sign1 + sign2 + sign3;
-    if (abs(sum) < 1e-7) {
-        // degenirsan trougao
-        // a i izbegavamo deljenje nulom
-        return false;
-    }
-
-    float t = (dot(cross(u, v), w)) / sum;
-
-    if (!primitive_hit.hit || (t > 1e-6 && t < primitive_hit.t)) {
-        primitive_hit.t = t;
-        primitive_hit.primitive_index = primitive_index;
-        primitive_hit.instance_index = instance_index;
-        float inv_sum = 1.0 / sum;
-        primitive_hit.uv = vec2(sign2 * inv_sum, sign3 * inv_sum);
-        primitive_hit.hit = true;
-        return true;
-    }
-
-    return false;
-}
-
-// Moller–Trumbore
+// Möller–Trumbore intersection
 bool triangle_intersection(Ray ray, GPUPrimitive triangle, uint primitive_index, uint instance_index) {
     const float EPS = 1e-12;
+    const float T_MIN = 1e-4;
     vec3 v0 = triangle.v0.xyz;
     vec3 v1 = triangle.v1.xyz;
     vec3 v2 = triangle.v2.xyz;
@@ -196,7 +154,7 @@ bool triangle_intersection(Ray ray, GPUPrimitive triangle, uint primitive_index,
 
     float t = f * dot(edge2, q);
 
-    if (t > EPS && (!primitive_hit.hit || t < primitive_hit.t)) {
+    if (t > T_MIN && t < primitive_hit.t) {
         primitive_hit.t = t;
         primitive_hit.primitive_index = primitive_index;
         primitive_hit.instance_index = instance_index;
@@ -208,6 +166,7 @@ bool triangle_intersection(Ray ray, GPUPrimitive triangle, uint primitive_index,
     return false;
 }
 
+// Slab algorithm AABB intersection
 bool aabb_intersection(Ray ray, vec3 min_bound, vec3 max_bound) {
     vec3 t0 = (min_bound - ray.origin) * ray.inv_dir;
     vec3 t1 = (max_bound - ray.origin) * ray.inv_dir;
@@ -220,14 +179,12 @@ bool aabb_intersection(Ray ray, vec3 min_bound, vec3 max_bound) {
 
     t_entry = max(t_entry, 0.0);
 
-    return (t_entry <= t_exit) && (!primitive_hit.hit || t_entry < primitive_hit.t);
+    return (t_entry <= t_exit) && (t_entry < primitive_hit.t);
 }
-
 
 bool traverse_blas(Ray ray, uint root_index, uint instance_index) {
     bool hit = false;
-    // RECURSION WON'T WORK SO WE HAVE TO FAKE IT
-    uint stack[128];
+    uint stack[16];
     stack[0] = root_index;
     int stack_ptr = 1;
     while (stack_ptr > 0) {
@@ -242,7 +199,6 @@ bool traverse_blas(Ray ray, uint root_index, uint instance_index) {
         }
         if (node.primitive_count != 0) {
             for (uint i = 0; i < node.primitive_count; i++) {
-                // check all primitives individually
                 uint primitive_index = node.first_primitive + i;
                 GPUPrimitive triangle = primitives[primitive_index];
                 if (triangle_intersection(ray, triangle, primitive_index, instance_index)) {
@@ -258,30 +214,21 @@ bool traverse_blas(Ray ray, uint root_index, uint instance_index) {
 }
 
 bool traverse_tlas(Ray ray, uint root_index) {
-    // RECURSION WON'T WORK SO WE HAVE TO FAKE IT
     bool hit = false;
-    uint stack[128];
+    uint stack[16];
     stack[0] = root_index;
     int stack_ptr = 1;
     while (stack_ptr > 0) {
-        // get node from to of the stack
         uint node_index = stack[--stack_ptr];
         TlasNode node = tlas_tree[node_index];
 
         vec3 min_bound = node.min_bound;
         vec3 max_bound = node.max_bound;
         bool hit_box = aabb_intersection(ray, min_bound, max_bound);
-        // no hit on the box, go back
         if (!hit_box) {
             continue;
         }
-        // we hit something
-        // is it a leaf (model) ?
-        // or an inner node (bounding box) ?
         if (node.instance_count != 0) {
-            // RAY WORLD TO RAY LOCAL
-            // DON'T FORGET LIIKE LAST TIME
-            // no need for a for-loop since we have one model per leaf
             uint instance_index = node.first_instance;
             GPUInstance instance = instances[instance_index];
 
@@ -302,59 +249,171 @@ bool traverse_tlas(Ray ray, uint root_index) {
     return hit;
 }
 
-void light_ray(){
-
-}
-
-void shadow_ray(){
-
-}
-
-//     Regular,
-//     Diffuse,
-//     Specular,
-//     Normal,
-//     Height,
-//     Emissive,
-//     Metalness,
-//     DiffuseRoughness,
-//     AmbientOcclusion
-
-vec3 texture_primitive(GPUPrimitive tri, GPUInstance inst) {
-    int diff_idx = int(tri.t_idx.x);
-    int spec_idx = int(tri.t_idx.y);
-    int norm_idx = int(tri.t_idx.z);
-    int high_idx = int(tri.t_idx.w);
-    int emis_idx = int(tri.t_idx_b.x);
-    int metl_idx = int(tri.t_idx_b.y);
-    int difr_idx = int(tri.t_idx_b.z);
-    int amoc_idx = int(tri.t_idx_b.w);
-
+vec3 hit_barycentric() {
     float u = primitive_hit.uv.x;
     float v = primitive_hit.uv.y;
-    float w = 1.0f - u - v;
-
-    vec2 interpolated_uv = w * tri.uv0.xy + u * tri.uv1.xy + v * tri.uv2.xy;
-
-    // textureLod bff <3 <3
-    vec3 diff_color = (diff_idx != -1) ? textureLod(u_Textures[diff_idx], interpolated_uv, 0.0).rgb : vec3(1.0f);
-    vec3 norm_color = (norm_idx != -1) ? textureLod(u_Textures[norm_idx], interpolated_uv, 0.0).rgb : vec3(0.5, 0.5, 1.0);
-    float spec_color = (spec_idx != -1) ? textureLod(u_Textures[spec_idx], interpolated_uv, 0.0).r : 0.2f;
-
-    return diff_color;
+    return vec3(1.0 - u - v, u, v);
 }
 
-vec3 color_primitive(GPUPrimitive tri, GPUInstance inst) {
-    vec3 edge1 = tri.v1.xyz - tri.v0.xyz;
-    vec3 edge2 = tri.v2.xyz - tri.v0.xyz;
-    vec3 local_normal = normalize(cross(edge1, edge2));
+vec2 interpolate_uv(GPUPrimitive tri, vec3 b) {
+    return b.x * tri.uv0.xy + b.y * tri.uv1.xy + b.z * tri.uv2.xy;
+}
 
-    mat3 normal_matrix = transpose(mat3(inst.world_to_local));
-    vec3 world_normal = normalize(normal_matrix * local_normal);
+vec3 hit_normal(GPUPrimitive tri, GPUInstance inst, vec3 b, vec2 uv, vec3 ray_dir) {
+    vec3 n_local = b.x * tri.n0.xyz + b.y * tri.n1.xyz + b.z * tri.n2.xyz;
 
-    vec3 normal_color = world_normal * 0.5 + 0.5;
+    int norm_idx = int(tri.t_idx.y);
+    if (u_use_textures && norm_idx != -1) {
+        vec3 t = normalize(b.x * tri.t0.xyz + b.y * tri.t1.xyz + b.z * tri.t2.xyz);
+        vec3 bt = normalize(b.x * tri.b0.xyz + b.y * tri.b1.xyz + b.z * tri.b2.xyz);
+        vec3 tex_n = textureLod(u_Textures[norm_idx], uv, 0.0).rgb * 2.0 - 1.0;
+        n_local = mat3(t, bt, normalize(n_local)) * tex_n;
+    }
 
-    return normal_color;
+    vec3 n = normalize(transpose(mat3(inst.world_to_local)) * n_local);
+    return (dot(n, ray_dir) > 0.0) ? -n : n;
+}
+
+float rand(vec2 co) {
+    return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
+}
+
+// okej
+// ne vidim puno prostora za optimizaciju
+vec3 shadow_ray(vec3 world_hit_pos, vec3 normal) {
+    vec3 total_light = vec3(0.0);
+    if(u_light_count == 0){
+        return total_light;
+    }
+    for (int i = 0; i < u_light_count; i++) {
+        vec3 accum = vec3(0.0);
+
+        for (int s = 0; s < u_light_samples; s++) {
+            vec3 target = lights[i].position.xyz;
+            if (u_light_count > 1) {
+                vec2 seed = world_hit_pos.xy + world_hit_pos.z + float(s) * 17.3 + float(i) * 91.7;
+                vec3 jitter = vec3(rand(seed), rand(seed + 5.1), rand(seed + 23.9)) * 2.0 - 1.0;
+                target += jitter * LIGHT_RADIUS;
+            }
+
+            vec3 ray = target - world_hit_pos;
+            float dist = length(ray);
+            vec3 ray_dir = ray / dist;
+
+            // trougao nije okrenut ka izvora svetla, ne proveravaj ga
+            float n_dot_l = dot(normal, ray_dir);
+            if (n_dot_l <= 0.0) {
+                continue;
+            }
+
+            Ray sray;
+            sray.origin = world_hit_pos;
+            sray.dir = ray_dir;
+            sray.inv_dir = 1.0 / ray_dir;
+
+            HitData old = primitive_hit;
+            primitive_hit.hit = false;
+            primitive_hit.t = 1e30;
+
+            if (traverse_tlas(sray, 0)) {
+                GPUPrimitive tri = primitives[primitive_hit.primitive_index];
+                int emis_idx = int(tri.t_idx.z);
+                if (emis_idx != -1) {
+                    vec2 iuv = interpolate_uv(tri, hit_barycentric());
+                    vec3 emissive_col = textureLod(u_Textures[emis_idx], iuv, 1.0).rgb;
+                    if (dot(emissive_col, emissive_col) > 0.01) {
+                        accum += emissive_col * n_dot_l * u_light_power / (1.0 + dist * dist);
+                    }
+                }
+            }
+            primitive_hit = old;
+        }
+
+        total_light += accum / float(u_light_count);
+    }
+    return total_light;
+}
+
+// nema puno filozofije
+vec3 texture_primitive(GPUPrimitive tri, GPUInstance inst, vec3 world_hit_pos) {
+    int diff_idx = int(tri.t_idx.x);
+    vec3 bar = hit_barycentric();
+    vec2 iuv = interpolate_uv(tri, bar);
+    // if (!u_use_textures || diff_idx == -1){
+    //     return vec3(iuv, 1.0);
+    // }
+    return textureLod(u_Textures[diff_idx], iuv, 1.0).rgb;
+}
+
+vec3 reflection_ray(vec3 pos, GPUPrimitive tri, GPUInstance inst, vec3 ray_dir) {
+    HitData old = primitive_hit;
+
+    vec3 accum = vec3(0.0);
+    vec3 throughput = vec3(1.0);
+
+    GPUPrimitive cur_tri = tri;
+    GPUInstance cur_inst = inst;
+    vec3 cur_pos = pos;
+    vec3 cur_dir = ray_dir;
+
+    int bounces = clamp(u_reflection_count, 0, MAX_REFLECTIONS);
+
+    for (int bounce = 0; bounce < MAX_REFLECTIONS && bounce < bounces; bounce++) {
+        vec3 b = hit_barycentric();
+        vec2 iuv = interpolate_uv(cur_tri, b);
+
+        int arm_idx = int(cur_tri.t_idx.w);
+        if (arm_idx == -1) {
+            break;
+        }
+
+        vec4 arm_tex = textureLod(u_Textures[arm_idx], iuv, 0.0);
+        float metalness = arm_tex.b;
+        float roughness = arm_tex.g;
+        if (metalness < u_min_reflection) {
+            break;
+        }
+
+        vec3 n = hit_normal(cur_tri, cur_inst, b, iuv, cur_dir);
+        vec3 mirror = reflect(cur_dir, n);
+        vec2 seed = iuv + float(bounce) * 7.31;
+        vec3 jitter = vec3(rand(seed), rand(seed + 13.7), rand(seed + 41.3)) * 2.0 - 1.0;
+
+        vec3 scattered = normalize(mirror + jitter * roughness * roughness);
+        if (dot(scattered, n) < 0.0) {
+            scattered = mirror;
+        }
+
+        Ray rray;
+        rray.dir = scattered;
+        rray.origin = cur_pos + n * 1e-3;
+        rray.inv_dir = 1.0 / rray.dir;
+
+        throughput *= metalness * texture_primitive(cur_tri, cur_inst, cur_pos);
+
+        primitive_hit.hit = false;
+        primitive_hit.t = 1e30;
+
+        if (!traverse_tlas(rray, 0)) {
+            break;
+        }
+
+        vec3 p2 = rray.origin + rray.dir * primitive_hit.t;
+        GPUPrimitive t2 = primitives[primitive_hit.primitive_index];
+        GPUInstance i2 = instances[primitive_hit.instance_index];
+        vec3 b2 = hit_barycentric();
+        vec2 iuv2 = interpolate_uv(t2, b2);
+        vec3 n2 = hit_normal(t2, i2, b2, iuv2, rray.dir);
+
+        accum += throughput * texture_primitive(t2, i2, p2) * (vec3(u_ambient) + shadow_ray(p2, n2));
+        cur_tri = t2;
+        cur_inst = i2;
+        cur_pos = p2;
+        cur_dir = rray.dir;
+    }
+
+    primitive_hit = old;
+    return accum;
 }
 
 void main() {
@@ -376,13 +435,25 @@ void main() {
     if (traverse_tlas(ray, 0)) {
         GPUInstance instance = instances[primitive_hit.instance_index];
         GPUPrimitive tri = primitives[primitive_hit.primitive_index];
+        vec3 b = hit_barycentric();
+        vec2 iuv = interpolate_uv(tri, b);
 
-        int diffuse_tex_idx = int(tri.t_idx.x);
-        if (diffuse_tex_idx != -1) {
-            FragColor = vec4(texture_primitive(tri, instance), 1.0f);
-        } else {
-            FragColor = vec4(color_primitive(tri, instance), 1.0f);
+        int emis_idx = int(tri.t_idx.z);
+        if (emis_idx != -1) {
+            vec3 emissive_col = textureLod(u_Textures[emis_idx], iuv, 0.0).rgb;
+            if (dot(emissive_col, emissive_col) > 0.01) {
+                FragColor = vec4(emissive_col * 20.0, 1.0);
+                return;
+            }
         }
+
+        vec3 world_hit_pos = ray.origin + ray.dir * primitive_hit.t;
+        vec3 n = hit_normal(tri, instance, b, iuv, ray.dir);
+        vec3 direct_light = shadow_ray(world_hit_pos, n);
+        vec3 base_color = texture_primitive(tri, instance, world_hit_pos);
+        vec3 final_color = base_color * (vec3(u_ambient) + direct_light);
+        final_color += reflection_ray(world_hit_pos, tri, instance, ray.dir);
+        FragColor = vec4(final_color, 1.0);
     } else {
         FragColor = vec4(0.08, 0.08, 0.12, 1.0);
     }

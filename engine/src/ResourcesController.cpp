@@ -241,13 +241,15 @@ ResourcesController::RawGeometry AssimpSceneProcessor::process_raw_geometry() {
     m_rwg.texture_indexes.clear();
     m_loading_model_rt = true;
     process_node(m_scene->mRootNode, glm::mat4(1.0f));
+    spdlog::info("scene name -> {}", m_scene->mName.C_Str());
+    spdlog::info("scene has {} lights", m_scene->mNumLights);
     return std::move(m_rwg);
 }
 
 std::vector<Mesh> AssimpSceneProcessor::process_meshes() {
     m_meshes.clear();
     process_node(m_scene->mRootNode, glm::mat4(1.0f));
-    spdlog::info("scene name -> {}", m_scene->mName.C_Str());
+
     return std::move(m_meshes);
 }
 
@@ -264,11 +266,20 @@ void AssimpSceneProcessor::process_node(const aiNode *node, const glm::mat4 &par
     glm::mat4 node_transform = ai_matrix_to_glm(node->mTransformation);
     glm::mat4 accumulated_transform = parent_transform * node_transform;
 
-    spdlog::info("model / submodel name -> {}", node->mName.C_Str());
+    for (uint32_t i = 0; i < m_scene->mNumLights; ++i) {
+        const aiLight *l = m_scene->mLights[i];
+        if (node->mName != l->mName) continue;
+        glm::vec4 p(l->mPosition.x, l->mPosition.y, l->mPosition.z, 1.0f);
+        glm::vec3 world = glm::vec3(accumulated_transform * p);
+        m_rwg.emissive_local_centroids.push_back(world);
+        spdlog::info("light '{}' at ({}, {}, {})", l->mName.C_Str(), world.x, world.y, world.z);
+    }
+
+    // spdlog::info("model / submodel name -> {}", node->mName.C_Str());
     const std::string model_name = node->mName.C_Str();
     for (uint32_t i = 0; i < node->mNumMeshes; ++i) {
         auto mesh = m_scene->mMeshes[node->mMeshes[i]];
-        spdlog::info("mesh name -> {}", mesh->mName.C_Str());
+        // spdlog::info("mesh name -> {}", mesh->mName.C_Str());
         process_mesh(mesh, accumulated_transform, model_name.contains("emissive"));
     }
     for (uint32_t i = 0; i < node->mNumChildren; ++i) {
@@ -283,6 +294,7 @@ void AssimpSceneProcessor::process_mesh(aiMesh *mesh, const glm::mat4 &transform
         emissive_flag = true;
     }
     std::vector<Vertex> vertices;
+
     glm::mat3 normal_matrix = glm::transpose(glm::inverse(glm::mat3(transform)));
     vertices.reserve(mesh->mNumVertices);
     for (unsigned int i = 0; i < mesh->mNumVertices; ++i) {
@@ -302,26 +314,23 @@ void AssimpSceneProcessor::process_mesh(aiMesh *mesh, const glm::mat4 &transform
 
     if (m_loading_model_rt) {
         // ovo promeniti koristiti materialId kao sto je marko preporucio a unutar materialId staviti indekse ovih stvar
-        glm::vec4 tex_indices_a{-1.0f};
-        glm::vec4 tex_indices_b{-1.0f};
+        glm::vec4 tex_indices{-1.0f};
         for (const auto &tex: textures) {
             if (!tex) continue;
             switch (tex->type()) {
-                case TextureType::Diffuse: tex_indices_a.x = static_cast<float>(tex->index()); break;
-                case TextureType::Specular: tex_indices_a.y = static_cast<float>(tex->index()); break;
-                case TextureType::Normal: tex_indices_a.z = static_cast<float>(tex->index()); break;
-                case TextureType::Height: tex_indices_a.w = static_cast<float>(tex->index()); break;
-                case TextureType::Emissive: tex_indices_b.x = static_cast<float>(tex->index()); break;
-                case TextureType::Metalness: tex_indices_b.y = static_cast<float>(tex->index()); break;
-                case TextureType::DiffuseRoughness: tex_indices_b.z = static_cast<float>(tex->index()); break;
-                case TextureType::AmbientOcclusion: tex_indices_b.w = static_cast<float>(tex->index()); break;
+                case TextureType::Diffuse: tex_indices.x = static_cast<float>(tex->index()); break;
+                case TextureType::Normal: tex_indices.y = static_cast<float>(tex->index()); break;
+                case TextureType::Emissive: tex_indices.z = static_cast<float>(tex->index()); break;
+                case TextureType::Metalness: tex_indices.w = static_cast<float>(tex->index()); break;
                 default: break;
             }
         }
+        spdlog::info("mesh '{}' mat={} -> diff={} norm={} emis={} arm={}",
+             mesh->mName.C_Str(), mesh->mMaterialIndex,
+             tex_indices.x, tex_indices.y, tex_indices.z, tex_indices.w);
         const size_t num_triangles = indices.size() / 3;
         for (size_t i = 0; i < num_triangles; ++i) {
-            m_rwg.texture_indexes.push_back(tex_indices_a);
-            m_rwg.texture_indexes.push_back(tex_indices_b);
+            m_rwg.texture_indexes.push_back(tex_indices);
         }
         const auto base_index = static_cast<uint32_t>(m_rwg.vertices.size());
         for (const uint32_t idx: indices) {
@@ -332,7 +341,6 @@ void AssimpSceneProcessor::process_mesh(aiMesh *mesh, const glm::mat4 &transform
             for (const auto &v: vertices) sum += v.Position;
             glm::vec3 local_centroid = sum / static_cast<float>(vertices.size());
             m_rwg.emissive_local_centroids.push_back(local_centroid);
-            spdlog::info("EMISSIVE YAY");
         }
         m_rwg.vertices.insert(m_rwg.vertices.end(), vertices.begin(), vertices.end());
     } else {
