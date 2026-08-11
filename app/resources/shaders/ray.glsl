@@ -482,7 +482,7 @@ void main() {
         if (emis_idx != -1) {
             vec3 emissive_col = sample_tex(emis_idx, iuv).rgb;
             if (dot(emissive_col, emissive_col) > 0.01) {
-                FragColor = vec4(emissive_col * 20.0, 1.0);
+                FragColor = vec4(emissive_col * 10.0, 1.0);
                 return;
             }
         }
