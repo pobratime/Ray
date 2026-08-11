@@ -1,34 +1,28 @@
 #pragma once
 
+#include "engine/core/Controller.hpp"
+#include "engine/graphics/Bloom.hpp"
 #include "engine/graphics/RayTracingPipeline.hpp"
-#include "engine/resources/BVHTree.hpp"
-#include "engine/resources/Model.hpp"
-#include "engine/resources/Shader.hpp"
-#include "glm/ext/vector_float3.hpp"
-#include <memory>
+#include "engine/resources/RayTracingModel.hpp"
 
-namespace engine::main::app {
-class Scene {
+namespace engine::main {
+class Scene final : public core::Controller {
 public:
     Scene() = default;
     ~Scene() = default;
+    graphics::RayTracingPipeline::RenderSettings settings{};
+    graphics::Bloom::BloomSettings bloom_settings{};
     void initialize();
     void render();
 
 private:
-    void setup_screen_quad();
-    resources::Shader *m_scene_shader = nullptr;
-    resources::Model *m_utah_teapod_model = nullptr;
-    resources::Model *m_stanford_bunny_model = nullptr;
+    resources::RayTracingModel *m_backpack{};
+    resources::RayTracingModel *m_desk_lamp{};
+    resources::RayTracingModel *m_chess{};
 
-    std::unique_ptr<resources::BVHTree> m_teapod_bvh;
-    std::unique_ptr<resources::BVHTree> m_bunny_bvh;
 
-    glm::vec3 m_teapod_pos = {0.0f, 0.0f, 0.0f};
-    glm::vec3 m_bunny_pos = {0.0f, 0.0f, 0.0f};
-
-    graphics::RayTracingPipeline m_pipeline;
-    // resources::BVHTree m_teapod_bvh;
-    // resources::BVHTree m_bunny_bvh;
-};
-}// namespace engine::main::app
+    resources::Shader *m_shader{};
+    graphics::RayTracingPipeline m_pipeline{};
+    graphics::Bloom m_bloom{};
+};// namespace engine::main
+}// namespace engine::main

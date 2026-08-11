@@ -32,6 +32,7 @@ __pycache__/
 *.pyc
 .cache/
 *.log
+.zed/
 
 # FIND-TODOS
 /find-todos/dist-newstyle

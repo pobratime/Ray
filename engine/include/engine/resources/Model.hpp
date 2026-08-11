@@ -6,7 +6,6 @@
 #ifndef MATF_RG_PROJECT_MODEL_HPP
 #define MATF_RG_PROJECT_MODEL_HPP
 
-#include <algorithm>
 #include <engine/resources/Mesh.hpp>
 #include <utility>
 
@@ -59,6 +58,7 @@ private:
     * @brief The meshes in the model.
     */
     std::vector<Mesh> m_meshes;
+
     /**
     * @brief The path to the model file from which the model was loaded.
     */
@@ -68,6 +68,10 @@ private:
     */
     std::string m_name;
 
+    /**
+    * @brief The BVH Tree of a model. 
+    */
+
     Model() = default;
 
     /**
@@ -75,13 +79,13 @@ private:
     * @param meshes The meshes in the model.
     * @param path The path to the model file from which the model was loaded.
     * @param name The name of the model by which it can be referenced using the @ref engine::resources::ResourcesController::model function.
+    * @param bvh The BVH Tree structure of the model.
     */
     Model(std::vector<Mesh> meshes, std::filesystem::path path,
           std::string name)
         : m_meshes(std::move(meshes))
         , m_path(std::move(path))
-        , m_name(std::move(name)) {
-    }
+        , m_name(std::move(name)) {}
 };
 }// namespace engine::resources
 

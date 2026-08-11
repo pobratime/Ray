@@ -1,14 +1,20 @@
-# {NAME-OF-THE-PROJECT}
+# Ray
 
-{INDEX} - {STUDENT-FULL-NAME}  
+mi23154 - Luka Ajdukovic
+
 {PROJECT DESCRIPTION}
 
 ## Controls
 
-{BUTTON1} -> {ACTION1}  
-{BUTTON2} -> {ACTION2}  
-...  
-{BUTTONN} -> {ACTIONN}
+\ -> Close the app
+
+F1 -> Lock / Unlock the mouse
+
+WASD -> Standard gamelike movement
+
+Mouse -> Standard gamelike camera control
+
+Mouse scroll -> Zoom in / Zoom out
 
 ## Features
 
@@ -32,12 +38,21 @@
 
 ### Engine improvement:
 
-[ ] ...
+BlasTree
+
+TlasTree
+
+RayTracingModel
+
+RayTracingPipeline
+
+ThreadPool
 
 ## Models:
 
-[link1]   
-[link2]
+Utah tepot -> https://graphics.cs.utah.edu/teapot/ 
+
+Stanford bunny -> https://graphics.stanford.edu/~mdfisher/Data/Meshes/bunny.obj
 
 ## Textures
 

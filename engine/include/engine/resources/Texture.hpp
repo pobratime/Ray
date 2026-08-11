@@ -6,6 +6,7 @@
 #ifndef MATF_RG_PROJECT_TEXTURE_HPP
 #define MATF_RG_PROJECT_TEXTURE_HPP
 
+#include <cstdint>
 #include <filesystem>
 #include <string_view>
 #include <utility>
@@ -22,6 +23,10 @@ enum class TextureType {
     Specular,
     Normal,
     Height,
+    Emissive,
+    Metalness,
+    DiffuseRoughness,
+    AmbientOcclusion
 };
 
 /**
@@ -90,6 +95,10 @@ public:
         return m_name;
     }
 
+    uint32_t index() {
+        return m_index;
+    }
+
     Texture() = default;
 
 private:
@@ -107,6 +116,7 @@ private:
         , m_name(std::move(name)) {
     }
 
+    uint32_t m_index{};
     uint32_t m_id{};
     TextureType m_type{};
     std::filesystem::path m_path{};

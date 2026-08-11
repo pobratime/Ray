@@ -1,19 +1,28 @@
 {
   "resources": {
+    "build_bvh_on_load": true,
     "models": {
-      "utah_teapot": {
-        "path": "utah_teapot.obj",
-        "flip_uvs": false
+      "desk_lamp": {
+        "path": "industrial_pipe_lamp_2k.gltf/industrial_pipe_lamp_2k.gltf",
+        "flip_uvs": true
       },
-      "stanford_bunny": {
-        "path": "stanford_bunny.obj",
-        "flip_uvs": false
+      "chess": {
+        "path": "chess_set_2k.gltf/chess_set_2k.gltf",
+        "flip_uvs": true
+      },
+      "table": {
+        "path": "side_table_01_2k.gltf/side_table_01_2k.gltf",
+        "flip_uvs": true
+      },
+      "mirror": {
+        "path": "ornate_mirror_01_2k.gltf/ornate_mirror_01_2k.gltf",
+        "flip_uvs": true
       }
     }
   },
   "window": {
-    "height": 600,
+    "height": 720,
     "title": "Ray",
-    "width": 800
+    "width": 1080
   }
 }
