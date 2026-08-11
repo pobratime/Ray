@@ -16,6 +16,8 @@ public:
         float light_power = 1.0f;
         float ambient = 0.25f;
         bool use_textures = true;
+        int ao_samples = 4;
+        float ao_radius = 0.3f;
     };
     void initialize(RenderSettings &s);
     void render(RenderSettings &s);

@@ -2,13 +2,13 @@
 // clang-format off
 #include <glad/glad.h>
 // clang-format on
+#include <algorithm>
 #include <engine/graphics/OpenGL.hpp>
 #include <engine/resources/Shader.hpp>
 #include <engine/resources/ShaderCompiler.hpp>
 #include <engine/resources/Skybox.hpp>
 #include <engine/util/Errors.hpp>
 #include <engine/util/Utils.hpp>
-#include <algorithm>
 #include <filesystem>
 #include <stb_image.h>
 #include <vector>

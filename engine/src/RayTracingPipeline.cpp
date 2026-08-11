@@ -49,11 +49,10 @@ void RayTracingPipeline::set_settings() {
     shader->set_float("u_light_power", m_settings.light_power);
     shader->set_float("u_ambient", m_settings.ambient);
     shader->set_bool("u_use_textures", m_settings.use_textures);
+    shader->set_int("u_ao_samples", m_settings.ao_samples);
+    shader->set_float("u_ao_radius", m_settings.ao_radius);
 }
 
-// Packs every ray tracing texture into one GL_TEXTURE_2D_ARRAY, keeping the layer
-// index equal to Texture::index() so the values already baked into the primitive
-// buffer stay valid. Runs once: nothing here changes per frame.
 void RayTracingPipeline::build_texture_array() {
     const auto res_con = engine::core::Controller::get<resources::ResourcesController>();
     const std::vector<resources::Texture *> &textures = res_con->rttextures();
@@ -80,7 +79,6 @@ void RayTracingPipeline::bind_textures() {
     if (m_texture_array_id == 0) {
         return;
     }
-    // Only a unit rebind: other passes (skybox, ImGui) may have taken the unit.
     CHECKED_GL_CALL(glBindTextureUnit, TEXTURE_ARRAY_UNIT, m_texture_array_id);
 }
 

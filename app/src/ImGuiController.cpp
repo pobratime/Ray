@@ -146,11 +146,24 @@ void ImGuiController::draw() {
     ImGui::SliderFloat("Power", &s.light_power, 0.0f, 10.0f, "%.2f");
     ImGui::EndDisabled();
     ImGui::SliderFloat("Ambient", &s.ambient, 0.0f, 1.0f, "%.2f");
+    ImGui::SliderInt("AO samples", &s.ao_samples, 0, 16);
+    ImGui::BeginDisabled(s.ao_samples == 0);
+    ImGui::SliderFloat("AO radius", &s.ao_radius, 0.01f, 2.0f, "%.2f");
+    ImGui::EndDisabled();
 
     ImGui::SeparatorText("Reflections");
     ImGui::SliderInt("Bounces", &s.reflection_count, 0, 16);
     ImGui::BeginDisabled(s.reflection_count == 0);
     ImGui::SliderFloat("Min metalness", &s.min_reflection, 0.0f, 1.0f, "%.2f");
+    ImGui::EndDisabled();
+
+    ImGui::SeparatorText("Bloom");
+    auto &b = scene->bloom_settings;
+    ImGui::Checkbox("Bloom", &b.enabled);
+    ImGui::BeginDisabled(!b.enabled);
+    ImGui::SliderFloat("Threshold", &b.threshold, 0.0f, 5.0f, "%.2f");
+    ImGui::SliderFloat("Intensity", &b.intensity, 0.0f, 5.0f, "%.2f");
+    ImGui::SliderInt("Blur passes", &b.blur_passes, 1, 20);
     ImGui::EndDisabled();
 
     ImGui::SeparatorText("Features");

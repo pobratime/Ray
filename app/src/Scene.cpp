@@ -4,7 +4,6 @@
 #include "engine/platform/PlatformController.hpp"
 #include "engine/resources/ResourcesController.hpp"
 #include "glm/trigonometric.hpp"
-#include "spdlog/spdlog.h"
 
 namespace engine::main {
 void Scene::initialize() {
@@ -24,14 +23,16 @@ void Scene::initialize() {
     mirror->rotate_model(glm::vec3(0.0f, 180.0f, 0.0f));
     m_chess->translate_model(glm::vec3(0, 0.55f, 0));
     m_chess->activate();
+
+    const auto window = engine::core::Controller::get<platform::PlatformController>()->window();
+    m_bloom.initialize(window->width(), window->height());
 }
 
 void Scene::render() {
     const auto camera = engine::core::Controller::get<graphics::GraphicsController>()->camera();
     const auto window = engine::core::Controller::get<platform::PlatformController>()->window();
-    // spdlog::info("camra pos -> {} {} {}", camera->Position.x, camera->Position.y, camera->Position.z);
-    // spdlog::info("camera front -> {} {} {}", camera->Front.x, camera->Front.y, camera->Front.z);
     m_shader->use();
+    m_bloom.begin(window->width(), window->height());
     m_pipeline.render(settings);
     m_shader->set_vec3("u_camera_position", camera->Position);
     m_shader->set_vec3("u_camera_front", camera->Front);
@@ -39,6 +40,7 @@ void Scene::render() {
     m_shader->set_vec3("u_camera_right", camera->Right);
     m_shader->set_float("u_fov_tan", tanf(glm::radians(camera->Zoom)));
     m_shader->set_float("u_aspect_ratio", static_cast<float>(window->width()) / static_cast<float>(window->height()));
+    m_bloom.end(bloom_settings);
 }
 
 }// namespace engine::main

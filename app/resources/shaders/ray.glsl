@@ -99,11 +99,8 @@ uniform float u_min_reflection;
 uniform float u_light_power;
 uniform float u_ambient;
 uniform bool u_use_textures;
-
-// Hard upper bounds so the compiler still knows a maximum trip count even
-// though the real limit is a uniform.
-const int MAX_LIGHT_SAMPLES = 16;
-const int MAX_REFLECTIONS = 4;
+uniform int u_ao_samples;
+uniform float u_ao_radius;
 
 // Radius of the emitter used for soft shadows. Roughly the size of the bulb.
 const float LIGHT_RADIUS = 0.02;
@@ -344,14 +341,45 @@ vec3 shadow_ray(vec3 world_hit_pos, vec3 normal) {
     return total_light;
 }
 
+float ambient_occlusion(vec3 world_hit_pos, vec3 normal) {
+    if (u_ao_samples == 0) {
+        return 1.0;
+    }
+    int blocked = 0;
+    for (int i = 0; i < u_ao_samples; i++) {
+        vec2 seed = world_hit_pos.xy + world_hit_pos.z + float(i) * 31.7;
+        vec3 rnd = vec3(rand(seed), rand(seed.yx * 1.7), rand(seed * 3.3 + 11.0)) * 2.0 - 1.0;
+        // normal + a random point in a cube lands somewhere in the hemisphere above the surface
+        vec3 dir = normal + rnd;
+        if (dot(dir, dir) < 1e-6) {
+            dir = normal;
+        }
+        dir = normalize(dir);
+
+        Ray aray;
+        aray.origin = world_hit_pos + normal * 1e-3;
+        aray.dir = dir;
+        aray.inv_dir = 1.0 / dir;
+
+        HitData old = primitive_hit;
+        primitive_hit.hit = false;
+        primitive_hit.t = u_ao_radius;
+        if (traverse_tlas(aray, 0, true)) {
+            blocked++;
+        }
+        primitive_hit = old;
+    }
+    return 1.0 - float(blocked) / float(u_ao_samples);
+}
+
 // nema puno filozofije
 vec3 texture_primitive(GPUPrimitive tri, GPUInstance inst, vec3 world_hit_pos) {
     int diff_idx = int(tri.t_idx.x);
+    if (!u_use_textures || diff_idx == -1) {
+        return vec3(1.0);
+    }
     vec3 bar = hit_barycentric();
     vec2 iuv = interpolate_uv(tri, bar);
-    // if (!u_use_textures || diff_idx == -1){
-    //     return vec3(iuv, 1.0);
-    // }
     return sample_tex(diff_idx, iuv).rgb;
 }
 
@@ -463,7 +491,8 @@ void main() {
         vec3 n = hit_normal(tri, instance, b, iuv, ray.dir);
         vec3 direct_light = shadow_ray(world_hit_pos, n);
         vec3 base_color = texture_primitive(tri, instance, world_hit_pos);
-        vec3 final_color = base_color * (vec3(u_ambient) + direct_light);
+        float ao = ambient_occlusion(world_hit_pos, n);
+        vec3 final_color = base_color * (vec3(u_ambient) * ao + direct_light);
         final_color += reflection_ray(world_hit_pos, tri, instance, ray.dir);
         FragColor = vec4(final_color, 1.0);
     } else {
