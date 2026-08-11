@@ -188,7 +188,7 @@ bool aabb_intersection(Ray ray, vec3 min_bound, vec3 max_bound) {
 
 bool traverse_blas(Ray ray, uint root_index, uint instance_index, bool any_hit) {
     bool hit = false;
-    uint stack[16];
+    uint stack[13];
     stack[0] = root_index;
     int stack_ptr = 1;
     while (stack_ptr > 0) {
@@ -222,7 +222,7 @@ bool traverse_blas(Ray ray, uint root_index, uint instance_index, bool any_hit) 
 
 bool traverse_tlas(Ray ray, uint root_index, bool any_hit) {
     bool hit = false;
-    uint stack[8];
+    uint stack[4];
     stack[0] = root_index;
     int stack_ptr = 1;
     while (stack_ptr > 0) {
@@ -387,13 +387,14 @@ vec3 reflection_ray(vec3 pos, GPUPrimitive tri, GPUInstance inst, vec3 ray_dir) 
 
         vec3 n = hit_normal(cur_tri, cur_inst, b, iuv, cur_dir);
         vec3 mirror = reflect(cur_dir, n);
-        vec2 seed = iuv + float(bounce) * 7.31;
-        vec3 jitter = vec3(rand(seed), rand(seed + 13.7), rand(seed + 41.3)) * 2.0 - 1.0;
-
-        vec3 scattered = normalize(mirror + jitter * roughness * roughness);
-        if (dot(scattered, n) < 0.0) {
-            scattered = mirror;
+        vec3 scattered = mirror;
+        if (roughness > 0.15) {
+            vec2 seed = gl_FragCoord.xy + float(bounce) * 7.31;
+            vec3 jitter = vec3(rand(seed), rand(seed.yx * 1.7), rand(seed * 3.3 + 11.0)) * 2.0 - 1.0;
+            scattered = normalize(mirror + jitter * roughness * roughness);
+            if (dot(scattered, n) < 0.0) scattered = mirror;
         }
+
 
         Ray rray;
         rray.dir = scattered;

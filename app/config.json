@@ -13,12 +13,16 @@
       "table": {
         "path": "side_table_01_2k.gltf/side_table_01_2k.gltf",
         "flip_uvs": true
+      },
+      "mirror": {
+        "path": "ornate_mirror_01_2k.gltf/ornate_mirror_01_2k.gltf",
+        "flip_uvs": true
       }
     }
   },
   "window": {
     "height": 720,
     "title": "Ray",
-    "width":1080
+    "width": 1080
   }
 }

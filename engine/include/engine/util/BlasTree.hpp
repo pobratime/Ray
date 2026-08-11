@@ -49,7 +49,7 @@ public:
     }
 
 private:
-    static constexpr uint32_t MAX_LEAF_PRIMITIVES = 8;
+    static constexpr uint32_t MAX_LEAF_PRIMITIVES = 16;
 
     struct CPUPrimitive {
         glm::vec3 v0, v1, v2;

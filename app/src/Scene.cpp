@@ -18,6 +18,10 @@ void Scene::initialize() {
     const auto table = res_con->rtmodel("table");
     table->activate();
     table->scale_model(glm::vec3(1.5f, 1.0f, 3.0f));
+    const auto mirror = res_con->rtmodel("mirror");
+    mirror->activate();
+    mirror->translate_model(glm::vec3(0.0f, 1.00f, 0.5f));
+    mirror->rotate_model(glm::vec3(0.0f, 180.0f, 0.0f));
     m_chess->translate_model(glm::vec3(0, 0.55f, 0));
     m_chess->activate();
 }
