@@ -80,7 +80,7 @@ layout(std430, binding = 4) readonly buffer LightsBuffer {
     GPULightSource lights[];
 };
 
-uniform sampler2D u_Textures[16];
+uniform sampler2DArray u_Textures;
 
 // camera uniforms
 uniform vec3 u_camera_position;
@@ -125,6 +125,10 @@ struct HitData {
 };
 
 HitData primitive_hit;
+
+vec4 sample_tex(int index, vec2 uv) {
+    return textureLod(u_Textures, vec3(uv, float(index)), 0.0);
+}
 
 // Möller–Trumbore intersection
 bool triangle_intersection(Ray ray, GPUPrimitive triangle, uint primitive_index, uint instance_index) {
@@ -272,7 +276,7 @@ vec3 hit_normal(GPUPrimitive tri, GPUInstance inst, vec3 b, vec2 uv, vec3 ray_di
     if (u_use_textures && norm_idx != -1) {
         vec3 t = normalize(b.x * tri.t0.xyz + b.y * tri.t1.xyz + b.z * tri.t2.xyz);
         vec3 bt = normalize(b.x * tri.b0.xyz + b.y * tri.b1.xyz + b.z * tri.b2.xyz);
-        vec3 tex_n = textureLod(u_Textures[norm_idx], uv, 0.0).rgb * 2.0 - 1.0;
+        vec3 tex_n = sample_tex(norm_idx, uv).rgb * 2.0 - 1.0;
         n_local = mat3(t, bt, normalize(n_local)) * tex_n;
     }
 
@@ -326,7 +330,7 @@ vec3 shadow_ray(vec3 world_hit_pos, vec3 normal) {
                 int emis_idx = int(tri.t_idx.z);
                 if (emis_idx != -1) {
                     vec2 iuv = interpolate_uv(tri, hit_barycentric());
-                    vec3 emissive_col = textureLod(u_Textures[emis_idx], iuv, 0.0).rgb;
+                    vec3 emissive_col = sample_tex(emis_idx, iuv).rgb;
                     if (dot(emissive_col, emissive_col) > 0.01) {
                         accum += emissive_col * n_dot_l * u_light_power / (1.0 + dist * dist);
                     }
@@ -348,7 +352,7 @@ vec3 texture_primitive(GPUPrimitive tri, GPUInstance inst, vec3 world_hit_pos) {
     // if (!u_use_textures || diff_idx == -1){
     //     return vec3(iuv, 1.0);
     // }
-    return textureLod(u_Textures[diff_idx], iuv, 0.0).rgb;
+    return sample_tex(diff_idx, iuv).rgb;
 }
 
 vec3 reflection_ray(vec3 pos, GPUPrimitive tri, GPUInstance inst, vec3 ray_dir) {
@@ -374,7 +378,7 @@ vec3 reflection_ray(vec3 pos, GPUPrimitive tri, GPUInstance inst, vec3 ray_dir) 
             break;
         }
 
-        vec4 arm_tex = textureLod(u_Textures[arm_idx], iuv, 0.0);
+        vec4 arm_tex = sample_tex(arm_idx, iuv);
         float metalness = arm_tex.b;
         float roughness = arm_tex.g;
         if (metalness < u_min_reflection) {
@@ -447,7 +451,7 @@ void main() {
 
         int emis_idx = int(tri.t_idx.z);
         if (emis_idx != -1) {
-            vec3 emissive_col = textureLod(u_Textures[emis_idx], iuv, 0.0).rgb;
+            vec3 emissive_col = sample_tex(emis_idx, iuv).rgb;
             if (dot(emissive_col, emissive_col) > 0.01) {
                 FragColor = vec4(emissive_col * 20.0, 1.0);
                 return;

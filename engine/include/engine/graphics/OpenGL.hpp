@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <engine/resources/Shader.hpp>
 #include <filesystem>
+#include <vector>
 
 namespace engine::resources {
 class Skybox;
@@ -80,6 +81,23 @@ public:
     * @returns OpenGL id of a texture object.
     */
     static uint32_t generate_texture(const std::filesystem::path &path, bool flip_uvs, std::vector<uint8_t> &data_cpy);
+
+    /**
+    * @brief Loads `paths` into a single GL_TEXTURE_2D_ARRAY, one layer per path.
+    *
+    * The ray tracing shader indexes its textures with a value read from the primitive
+    * buffer, which is not dynamically uniform. Indexing an array of samplers with such
+    * a value is undefined in GLSL and drivers typically lower it to a branch chain over
+    * every sampler, so the ray tracer uses one array texture and indexes the layer.
+    *
+    * All images must have identical dimensions; layers are stored as RGBA8 with a full
+    * mip chain.
+    *
+    * @param paths image files, in layer order.
+    * @param flip_uvs flip_uvs on load.
+    * @returns OpenGL id of the array texture, or 0 if `paths` is empty.
+    */
+    static uint32_t generate_texture_array(const std::vector<std::filesystem::path> &paths, bool flip_uvs = false);
 
     /**
     * @brief Get texture format for a `number_of_channels`.

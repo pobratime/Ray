@@ -13,6 +13,7 @@
 #include "glm/ext/vector_float3.hpp"
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
 #include <future>
 #include <vector>
 
@@ -21,6 +22,7 @@ void RayTracingPipeline::initialize(RenderSettings &s) {
     m_settings = s;
     set_settings();
     upload_global_data();
+    build_texture_array();
     setup_screen_quad();
     CHECKED_GL_CALL(glEnable, GL_BLEND);
     CHECKED_GL_CALL(glBlendFunc, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -49,24 +51,37 @@ void RayTracingPipeline::set_settings() {
     shader->set_bool("u_use_textures", m_settings.use_textures);
 }
 
-void RayTracingPipeline::bind_textures() {
+// Packs every ray tracing texture into one GL_TEXTURE_2D_ARRAY, keeping the layer
+// index equal to Texture::index() so the values already baked into the primitive
+// buffer stay valid. Runs once: nothing here changes per frame.
+void RayTracingPipeline::build_texture_array() {
     const auto res_con = engine::core::Controller::get<resources::ResourcesController>();
+    const std::vector<resources::Texture *> &textures = res_con->rttextures();
+    if (textures.empty()) {
+        return;
+    }
+
+    std::vector<std::filesystem::path> paths{};
+    paths.reserve(textures.size());
+    for (const auto &texture: textures) {
+        RG_GUARANTEE(texture->index() == paths.size(),
+                     "Ray tracing texture indices must match their position in rttextures().");
+        paths.push_back(texture->path());
+    }
+
+    m_texture_array_id = OpenGL::generate_texture_array(paths);
+
     const auto shader = res_con->shader("ray");
     shader->use();
-    const std::vector<resources::Texture *> &textures = res_con->rttextures();
-    size_t i = 0;
-    for (; i < textures.size(); i++) {
-        const int32_t sampler_slot = GL_TEXTURE0 + static_cast<int32_t>(i);
-        textures[i]->bind(sampler_slot);
-        std::string uniform_name = std::format("u_Textures[{}]", i);
-        shader->set_int(uniform_name, static_cast<int32_t>(i));
+    shader->set_int("u_Textures", TEXTURE_ARRAY_UNIT);
+}
+
+void RayTracingPipeline::bind_textures() {
+    if (m_texture_array_id == 0) {
+        return;
     }
-    // for (; i < textures.size() && i < 32; i++) {
-    //     const int32_t sampler_slot = GL_TEXTURE0 + static_cast<int32_t>(i);
-    //     textures[i]->bind(sampler_slot);
-    //     std::string uniform_name = std::format("u_Textures2[{}]", i);
-    //     shader->set_int(uniform_name, static_cast<int32_t>(i));
-    // }
+    // Only a unit rebind: other passes (skybox, ImGui) may have taken the unit.
+    CHECKED_GL_CALL(glBindTextureUnit, TEXTURE_ARRAY_UNIT, m_texture_array_id);
 }
 
 void RayTracingPipeline::update_lights() {
@@ -319,5 +334,8 @@ void RayTracingPipeline::destroy() {
     if (m_instances_ssbo != 0)
         CHECKED_GL_CALL(glDeleteBuffers, 1, &m_instances_ssbo);
     m_instances_ssbo = 0;
+    if (m_texture_array_id != 0)
+        CHECKED_GL_CALL(glDeleteTextures, 1, &m_texture_array_id);
+    m_texture_array_id = 0;
 }
 }// namespace engine::graphics

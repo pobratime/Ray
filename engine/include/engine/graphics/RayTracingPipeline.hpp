@@ -3,6 +3,8 @@
 #include "engine/util/TlasTree.hpp"
 #include <cstddef>
 #include <cstdint>
+#include <glm/vec4.hpp>
+#include <vector>
 
 namespace engine::graphics {
 class RayTracingPipeline {
@@ -32,6 +34,7 @@ private:
     void update_tlas();
     void update_lights();
     void setup_screen_quad();
+    void build_texture_array();
     void bind_textures();
     void upload_and_bind_tlas(const util::ds::TlasTree &tlas_tree);
     void upload_and_bind_lights(const std::vector<glm::vec4> &light_srcs);
@@ -41,6 +44,7 @@ private:
     static constexpr uint32_t TLAS_BINDING = 2;
     static constexpr uint32_t INSTANCE_BINDING = 3;
     static constexpr uint32_t LIGHTS_BINDING = 4;
+    static constexpr uint32_t TEXTURE_ARRAY_UNIT = 0;
 
     size_t m_last_tlas_size = 0;
     size_t m_last_instances_size = 0;

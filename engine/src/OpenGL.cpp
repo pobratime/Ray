@@ -8,8 +8,10 @@
 #include <engine/resources/Skybox.hpp>
 #include <engine/util/Errors.hpp>
 #include <engine/util/Utils.hpp>
+#include <algorithm>
 #include <filesystem>
 #include <stb_image.h>
+#include <vector>
 
 namespace engine::graphics {
 int32_t OpenGL::shader_type_to_opengl_type(resources::ShaderType type) {
@@ -48,6 +50,62 @@ uint32_t OpenGL::generate_texture(const std::filesystem::path &path, const bool 
         throw util::EngineError(util::EngineError::Type::AssetLoadingError,
                                 std::format("Failed to load texture {}", path.string()));
     }
+    return texture_id;
+}
+
+uint32_t OpenGL::generate_texture_array(const std::vector<std::filesystem::path> &paths, const bool flip_uvs) {
+    if (paths.empty()) {
+        return 0;
+    }
+    stbi_set_flip_vertically_on_load(flip_uvs);
+
+    // The array's dimensions are fixed by the first image; every other layer must match.
+    int32_t width = 0, height = 0, nr_components = 0;
+    if (!stbi_info(paths[0].c_str(), &width, &height, &nr_components)) {
+        throw util::EngineError(util::EngineError::Type::AssetLoadingError,
+                                std::format("Failed to read texture header {}", paths[0].string()));
+    }
+
+    int32_t levels = 1;
+    for (int32_t d = std::max(width, height); d > 1; d >>= 1) {
+        ++levels;
+    }
+
+    uint32_t texture_id = 0;
+    CHECKED_GL_CALL(glGenTextures, 1, &texture_id);
+    CHECKED_GL_CALL(glBindTexture, GL_TEXTURE_2D_ARRAY, texture_id);
+    CHECKED_GL_CALL(glTexStorage3D, GL_TEXTURE_2D_ARRAY, levels, GL_RGBA8, width, height,
+                    static_cast<int32_t>(paths.size()));
+
+    // One layer at a time, forcing 4 channels so every layer has the same layout.
+    // Decoding streams rather than holding all layers in memory at once.
+    for (size_t layer = 0; layer < paths.size(); ++layer) {
+        int32_t w = 0, h = 0, c = 0;
+        uint8_t *data = stbi_load(paths[layer].c_str(), &w, &h, &c, 4);
+        defer {
+            stbi_image_free(data);
+        };
+        if (!data) {
+            throw util::EngineError(util::EngineError::Type::AssetLoadingError,
+                                    std::format("Failed to load texture {}", paths[layer].string()));
+        }
+        if (w != width || h != height) {
+            throw util::EngineError(
+                    util::EngineError::Type::AssetLoadingError,
+                    std::format("Ray tracing textures must all share one size. {} is {}x{}, expected {}x{} (from {}).",
+                                paths[layer].string(), w, h, width, height, paths[0].string()));
+        }
+        CHECKED_GL_CALL(glTexSubImage3D, GL_TEXTURE_2D_ARRAY, 0, 0, 0, static_cast<int32_t>(layer),
+                        width, height, 1, GL_RGBA, GL_UNSIGNED_BYTE, data);
+    }
+
+    CHECKED_GL_CALL(glGenerateMipmap, GL_TEXTURE_2D_ARRAY);
+    CHECKED_GL_CALL(glTexParameteri, GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    CHECKED_GL_CALL(glTexParameteri, GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    CHECKED_GL_CALL(glTexParameteri, GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    CHECKED_GL_CALL(glTexParameteri, GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    CHECKED_GL_CALL(glBindTexture, GL_TEXTURE_2D_ARRAY, 0);
+
     return texture_id;
 }
 
