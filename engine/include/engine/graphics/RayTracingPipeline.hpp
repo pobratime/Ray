@@ -8,7 +8,7 @@ namespace engine::graphics {
 class RayTracingPipeline {
 public:
     struct RenderSettings {
-        int light_samples = 2;
+        int light_samples = 1;
         int reflection_count = 1;
         float min_reflection = 0.3f;
         float light_power = 1.0f;

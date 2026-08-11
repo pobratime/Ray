@@ -326,8 +326,8 @@ void AssimpSceneProcessor::process_mesh(aiMesh *mesh, const glm::mat4 &transform
             }
         }
         spdlog::info("mesh '{}' mat={} -> diff={} norm={} emis={} arm={}",
-             mesh->mName.C_Str(), mesh->mMaterialIndex,
-             tex_indices.x, tex_indices.y, tex_indices.z, tex_indices.w);
+                     mesh->mName.C_Str(), mesh->mMaterialIndex,
+                     tex_indices.x, tex_indices.y, tex_indices.z, tex_indices.w);
         const size_t num_triangles = indices.size() / 3;
         for (size_t i = 0; i < num_triangles; ++i) {
             m_rwg.texture_indexes.push_back(tex_indices);

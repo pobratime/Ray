@@ -182,7 +182,7 @@ bool aabb_intersection(Ray ray, vec3 min_bound, vec3 max_bound) {
     return (t_entry <= t_exit) && (t_entry < primitive_hit.t);
 }
 
-bool traverse_blas(Ray ray, uint root_index, uint instance_index) {
+bool traverse_blas(Ray ray, uint root_index, uint instance_index, bool any_hit) {
     bool hit = false;
     uint stack[16];
     stack[0] = root_index;
@@ -203,6 +203,9 @@ bool traverse_blas(Ray ray, uint root_index, uint instance_index) {
                 GPUPrimitive triangle = primitives[primitive_index];
                 if (triangle_intersection(ray, triangle, primitive_index, instance_index)) {
                     hit = true;
+                    if (any_hit && int(triangle.t_idx.z) == -1) {
+                        return true;
+                    }
                 }
             }
         } else {
@@ -213,9 +216,9 @@ bool traverse_blas(Ray ray, uint root_index, uint instance_index) {
     return hit;
 }
 
-bool traverse_tlas(Ray ray, uint root_index) {
+bool traverse_tlas(Ray ray, uint root_index, bool any_hit) {
     bool hit = false;
-    uint stack[16];
+    uint stack[8];
     stack[0] = root_index;
     int stack_ptr = 1;
     while (stack_ptr > 0) {
@@ -238,8 +241,11 @@ bool traverse_tlas(Ray ray, uint root_index) {
             local.inv_dir = 1.0 / local.dir;
 
             uint model_root_index = instance.blas_root_index;
-            if (traverse_blas(local, model_root_index, instance_index)) {
+            if (traverse_blas(local, model_root_index, instance_index, any_hit)) {
                 hit = true;
+                if(any_hit){
+                    return true;
+                }
             }
         } else {
             stack[stack_ptr++] = node.left_child;
@@ -290,7 +296,7 @@ vec3 shadow_ray(vec3 world_hit_pos, vec3 normal) {
 
         for (int s = 0; s < u_light_samples; s++) {
             vec3 target = lights[i].position.xyz;
-            if (u_light_count > 1) {
+            if (u_light_samples > 1) {
                 vec2 seed = world_hit_pos.xy + world_hit_pos.z + float(s) * 17.3 + float(i) * 91.7;
                 vec3 jitter = vec3(rand(seed), rand(seed + 5.1), rand(seed + 23.9)) * 2.0 - 1.0;
                 target += jitter * LIGHT_RADIUS;
@@ -307,20 +313,20 @@ vec3 shadow_ray(vec3 world_hit_pos, vec3 normal) {
             }
 
             Ray sray;
-            sray.origin = world_hit_pos;
+            sray.origin = world_hit_pos + normal * 1e-3;
             sray.dir = ray_dir;
             sray.inv_dir = 1.0 / ray_dir;
 
             HitData old = primitive_hit;
             primitive_hit.hit = false;
-            primitive_hit.t = 1e30;
+            primitive_hit.t = dist;
 
-            if (traverse_tlas(sray, 0)) {
+            if (traverse_tlas(sray, 0, true)) {
                 GPUPrimitive tri = primitives[primitive_hit.primitive_index];
                 int emis_idx = int(tri.t_idx.z);
                 if (emis_idx != -1) {
                     vec2 iuv = interpolate_uv(tri, hit_barycentric());
-                    vec3 emissive_col = textureLod(u_Textures[emis_idx], iuv, 1.0).rgb;
+                    vec3 emissive_col = textureLod(u_Textures[emis_idx], iuv, 0.0).rgb;
                     if (dot(emissive_col, emissive_col) > 0.01) {
                         accum += emissive_col * n_dot_l * u_light_power / (1.0 + dist * dist);
                     }
@@ -329,7 +335,7 @@ vec3 shadow_ray(vec3 world_hit_pos, vec3 normal) {
             primitive_hit = old;
         }
 
-        total_light += accum / float(u_light_count);
+        total_light += accum / float(u_light_samples);
     }
     return total_light;
 }
@@ -342,10 +348,13 @@ vec3 texture_primitive(GPUPrimitive tri, GPUInstance inst, vec3 world_hit_pos) {
     // if (!u_use_textures || diff_idx == -1){
     //     return vec3(iuv, 1.0);
     // }
-    return textureLod(u_Textures[diff_idx], iuv, 1.0).rgb;
+    return textureLod(u_Textures[diff_idx], iuv, 0.0).rgb;
 }
 
 vec3 reflection_ray(vec3 pos, GPUPrimitive tri, GPUInstance inst, vec3 ray_dir) {
+    if(u_reflection_count == 0){
+        return vec3(0.0, 0.0, 0.0);
+    }
     HitData old = primitive_hit;
 
     vec3 accum = vec3(0.0);
@@ -356,9 +365,7 @@ vec3 reflection_ray(vec3 pos, GPUPrimitive tri, GPUInstance inst, vec3 ray_dir) 
     vec3 cur_pos = pos;
     vec3 cur_dir = ray_dir;
 
-    int bounces = clamp(u_reflection_count, 0, MAX_REFLECTIONS);
-
-    for (int bounce = 0; bounce < MAX_REFLECTIONS && bounce < bounces; bounce++) {
+    for (int bounce = 0; bounce < u_reflection_count; bounce++) {
         vec3 b = hit_barycentric();
         vec2 iuv = interpolate_uv(cur_tri, b);
 
@@ -394,7 +401,7 @@ vec3 reflection_ray(vec3 pos, GPUPrimitive tri, GPUInstance inst, vec3 ray_dir) 
         primitive_hit.hit = false;
         primitive_hit.t = 1e30;
 
-        if (!traverse_tlas(rray, 0)) {
+        if (!traverse_tlas(rray, 0, false)) {
             break;
         }
 
@@ -432,7 +439,7 @@ void main() {
     ray.dir = ray_dir;
     ray.inv_dir = 1.0 / ray.dir;
 
-    if (traverse_tlas(ray, 0)) {
+    if (traverse_tlas(ray, 0, false)) {
         GPUInstance instance = instances[primitive_hit.instance_index];
         GPUPrimitive tri = primitives[primitive_hit.primitive_index];
         vec3 b = hit_barycentric();
